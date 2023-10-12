@@ -1,13 +1,17 @@
 import pdfplumber
 import re
+from inputs_file import pdf_path
 
 def should_add_bold_prefix(text):
+    """ Some lines should not be prefixed with 'Entity:' keyword even though, they are in bold letters """
     pattern = r'^[-+]?\d*\.?\d+$'
     if text.startswith("FCCC/CP") or re.match(pattern, text):
         return False
+
     return True
 
 def merge_entity_lines(groups):
+    """ if the entity text is split across lines,  merge them """
     merged_groups = []
     i = 0
     while i < len(groups):
@@ -19,9 +23,11 @@ def merge_entity_lines(groups):
         else:
             merged_groups.append(group)
         i += 1
+
     return merged_groups
 
 def extract_with_bold_annotations(pdf_path):
+    """ Extract the data from the pdf and add 'Entity:' to the bold data """
     nested_lines_with_bold = []
     current_group = []
     current_line = ""
@@ -74,32 +80,25 @@ def extract_with_bold_annotations(pdf_path):
     nested_lines_with_bold = merge_entity_lines(nested_lines_with_bold)
     return nested_lines_with_bold
 
-def split_data(lst):
-    current = []
-    for item in lst:
-        if item.startswith('Entity:') or re.match(r'(Mr\.\s*|Mrs\.\s*|Ms\.\s*|Dr\.\s*|Prof\.\s*|M\.\s*|Mme\ \s*|S\.E\.\s*|Sr\.\s*|Sra\.\s*|H\. E\.\s*|H\.E\.\s*)', item):
-
-            if current:
-                yield current
-                current = []
-        current.append(item)
-    if current:
-        yield current
-
 def clean_item(item):
+    """ conditions to clean the data """
     output_items = []
 
-    # Check for the presence of 'FCCC' and two occurrences of 'Entity:'
+        # Check for the presence of 'FCCC' and two occurrences of 'Entity:'
     if 'FCCC' in item and len(re.findall(r'Entity:', item)) == 2:
         item = item.split('Entity:', 2)[-1]  # Keep everything after the second 'Entity:'
-    # Check for the presence of two 'Entity:' and absence of 'FCCC'
+
+        # Check for the presence of two 'Entity:' and absence of 'FCCC'
     elif len(re.findall(r'Entity:', item)) == 2 and 'FCCC' not in item:
         item = item.replace('Entity:', '')
-    # Check for one 'Entity:' not at the start
+
+        # Check for one 'Entity:' not at the start
     elif item.find('Entity:') > 0:
         prefix, entity_content = item.split('Entity:', 1)
+
         if prefix.strip():
             output_items.append(prefix.strip())
+
         item = 'Entity:' + entity_content.strip()
 
     # The remaining standard cleaning
@@ -120,13 +119,20 @@ def clean_list(lst):
         cleaned.extend(cleaned_items)  # We use extend because clean_item returns a list
     return cleaned if cleaned else None
 
-
-# pdf_path = "C:\\Users\\rakes\\Downloads\\2005_COP_11_Montreal_Part_2_Final (2).pdf"
-pdf_path = "C:\\Users\\rakes\\Music\\pdfconverted image files\\1997_COP_3_Kyoto.pdf"
+# This contains the list of pdf extracted data.
 grouped_output = extract_with_bold_annotations(pdf_path)
-pattern = re.compile(r'^.*\bFCCC/CP/2005/INF.2\b.*$')
 
-# be careful with this line
+
+# *******************************************
+# for each pdf, the starting of the each page contains differnt things like 'page numbers' or 'FCCC/CP' like that,
+# we will carefully analyze and remove them
+# pattern to remove the row containing FCCC and its previous row
+pattern = re.compile(r'^.*\bFCCC/CP/\b.*$')
+
+# pattern to remove the row containing page numbers and its previous row
+# pattern = re.compile(r"^\d+$")
+
+# be careful with this line to remove the pattern containing fccc and the nest line
 for index, line in enumerate(grouped_output):
     if pattern.match(line[0]):  # assuming the regex should match the first item in the sublist
         if index > 0:  # to ensure there's a line before it
