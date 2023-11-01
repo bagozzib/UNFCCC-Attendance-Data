@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 
+# pending:
+# If a job title, division, or affiliation text span ENDS in one of the following two lower-case words/bigrams/trigrams: " et", " et de", " et de la" or " y", " y de", " y de la", "y del" (case sensitive...these are basically the french and spanish words for "and" or "and of (the)"), always join the text in the subsequent cell to this text. For example, row 1758 has the job title "Directeur des Activités Combustibles et" which should also contain the text that was split into division, so that the job title should correctly read as "Directeur des Activités Combustibles et Matières Premières de Substitution".
+
+# you can use '', to find the missing persons data
+
 import warnings
 warnings.filterwarnings('ignore')
 
+import functools
 # all the packages needed
 import pandas as pd
 import argostranslate.package
@@ -21,7 +27,7 @@ from flair.data import Sentence
 
 # Load stop words
 stop_words = set(stopwords.words('english'))
-
+failed_minister_gvrnmt_split_list = []
 # Load the English NLP model
 nlp = spacy.load("en_core_web_lg")
 matcher = Matcher(nlp.vocab)
@@ -29,10 +35,12 @@ matcher = Matcher(nlp.vocab)
 # define the global pattern, that matches with person names, there is another local variable 'title_pattern',
 # which doesnt match some titles like 'H.E' e.t.c, because we are keeping Mr. in title and H.E. in person name
 # change the 'title_pattern' local variable to change this behaviour
-# title_match_pattern = re.compile(r"(Mr\.|H\.E(?:\.\s*(?:Ms.|Mr.|Ms|Mr|))?|H\.E(?:\.\s*(?:Sra|Sr))?|Mrs\.|Ms\.|Dr\.|Prof\.|M\.|Mme|S\.E(?:\.\s*(?:Sra|Sr))?|Sr\.|Sra\.)")
-title_match_pattern = re.compile(
-    r"(Mr\.\s*|H\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |Sra\.\s*|Mme|Sr\.\s*))?|Mrs\.\s*|Sra\.\s*|Sr\.\s*|Ms\.\s*|Dr\.\s*|Prof\.\s*|M\.\s*|Mme|Ms|S\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Mme|M\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |M\ |Sra\.\s*|Sr\.\s*))?)")
 
+# title_match_pattern = re.compile(
+#     r"(Mr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |M\ |On\ |M\ |Fr\ |Rev\ |Mme\ |Sr\ |Msgr\ |On\.\s*|Fr\.\s*|Rev\.\s*|H\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |Sra\.\s*|Mme|Sr\.\s*|Msgr\.\s*))?|Msgr\.\s*|Mrs\.\s*|Sra\.\s*|Sr\.\s*|Ms\.\s*|Dr\.\s*|Prof\.\s*|M\.\s*|Mme|Ms|S\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Mme|Mr|Ms|Dr|Msgr\.\s*|M\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |M\ |Sra\.\s*|Sr\.\s*))?)")
+
+# Create a regular expression pattern to match the department names and 'of' or 'for'
+division_names_pattern = rf"(.+?)\s({'|'.join(re.escape(word) for word in department_names_set)})\s(of|for)\s(.+)"
 
 class get_manual_strings(object):
     """ get the strings that are joined by placing the text in multiple columns to a single column from the word file
@@ -109,12 +117,77 @@ class get_manual_strings(object):
 
         return text_set
 
+def join_based_on_stopwords(data):
+    """ if the text is divided to 2 lines, and if it is starting or ending with a stop word or some of the below
+    patterns, then joining those 2 lines """
+
+    def check_merge_conditions(current_str_last_word, next_str_first_word):
+        if (current_str_last_word.lower() in stop_words or
+                    next_str_first_word.lower() in stop_words or
+                    # next_str_first_word[0].islower() or   # this makes to generate false positives
+                    any(current_str_last_word.lower().endswith(pattern) for pattern in end_patterns) or
+                    current_str_last_word.lower() in exact_match_words or
+                    current_str_last_word.lower() in other_lang_stop_words_set or
+                    next_str_first_word.lower() in other_lang_stop_words_set or
+                    current_str_last_word.endswith('&') or
+                    next_str_first_word.startswith('&')):
+
+            return True
+
+        return False
+
+    merged_data = []
+
+    if len(data) == 2:
+        if not data[0] or not data[1]:
+            return data
+
+        # last word of the line
+        current_str_last_word = data[0].strip().split()[-1]
+        # first word of the next line
+        next_str_first_word = data[1].strip().split()[0]
+
+        if check_merge_conditions(current_str_last_word, next_str_first_word):
+            merged_string = data[0] + ' ' + data[1]
+
+            return [merged_string, '']
+        else:
+            return data
+
+    for inner_list in data:
+        i = 1
+        while i < len(inner_list) - 1:
+            # last word of the line
+            current_str_last_word = inner_list[i].strip().split()[-1]
+            # first word of the next line
+            next_str_first_word = inner_list[i + 1].strip().split()[0]
+
+            # Check the conditions for merging the strings
+            # Check if any of the following conditions are met:
+            # 1. The last word of the current string is in the list of stop words.
+            # 2. The first word of the next string is in the list of stop words.
+            # 3. The first character of the next string is lowercase.
+            # 4. The last word of the current string ends with any pattern in the list of end patterns.
+            # 5. The last word of the current string ends with '&'.
+            # 6. The first word of the next string starts with '&'.
+
+            if check_merge_conditions(current_str_last_word, next_str_first_word):
+                merged_string = inner_list[i] + " " + inner_list[i + 1]
+                inner_list[i] = merged_string
+                del inner_list[i + 1]
+
+            else:
+                i += 1
+
+        merged_data.append(inner_list)
+
+    return merged_data
 
 class SegregateData(object):
     """ CLassify the data to Group, Entity, Title, Name, Name doubt, English Translated Job Title, Job Title,
                         English Translated Division, Division, English Translated Affiliation, Affiliation, Extras """
 
-    def __init__(self, data_list, department_names, profession_names_set, affiliation_names, separator_items,
+    def __init__(self, data_list, department_names, profession_names_set, affiliation_names, separator_items_set,
                  merged_docx_strings):
 
         # the data from the pdf file which is like a list of lists
@@ -125,13 +198,12 @@ class SegregateData(object):
 
         # the set of names, that are basis of classification
         self.department_names = department_names
-        self.department_names = department_names
         self.affiliation_names = affiliation_names
         self.profession_names_set = profession_names_set
 
         # patterns that are majorly identified to divide the merged Items:
         # for ex: 'Director The Trendlyne Team', 'The' is the seperator item
-        self.separator_items = separator_items
+        self.separator_items_set = separator_items_set
         # the list of strings that are merged, converted to lower case after removing spaces useful to merge the split words
         # ex: merged_docx_strings is like: 'industrialunioncongressofsouthafricantradeunions'
         self.merged_docx_strings = merged_docx_strings
@@ -145,9 +217,10 @@ class SegregateData(object):
         self.replacement_string = ''
         # the minimum str length to mege the next single word to current text ex: ['str of len greater than 30', 'single word'] merged.
         self.min_previous_str_len_merge_single_wrd = 31
+        self.cache = {}
 
     def run(self):
-        # in the pdf extracted data if we have words that are split across lines, combining them based on comparision 
+        # in the pdf extracted data if we have words that are split across lines, combining them based on comparision
         # of joined text from the word file.
         processed_data = self.join_split_job_titles()
         # remove the special characters like '*' or any other characters, to remove them declare them in self.special_chars_list above
@@ -157,6 +230,7 @@ class SegregateData(object):
 
         return classified_list_data
 
+    @functools.lru_cache(maxsize=None)
     def contains_affiliation_name(self, text):
         """ returns True if the text contains any word form the predefined Affiliation names """
 
@@ -169,6 +243,7 @@ class SegregateData(object):
 
         return bool(matching_words)
 
+    @functools.lru_cache(maxsize=None)
     def check_affiliation(self, text):
         """ check if the text is an affiliation name or not by using spacy and flair packages.
             - "true" if both packages classify the text as an organization.
@@ -177,6 +252,12 @@ class SegregateData(object):
          """
         # if the text contains a division name, which is in our declared division names list, then it is a division.
         if self.contains_division_name(text):
+            return "false"
+
+        if self.check_multi_words_cndtn(text, multiple_words_affltn_list):
+            return "true"
+
+        if self.is_profession(text):
             return "false"
 
         # remove the '-' just for comparision, as it is making difficult for the verification.
@@ -217,6 +298,7 @@ class SegregateData(object):
         else:
             return "partial_true"
 
+    @functools.lru_cache(maxsize=None)
     def check_person(self, text):
         """ check if the text contains person name by using the spacy and flair packages """
         if self.check_affiliation(text) == "true":
@@ -251,9 +333,14 @@ class SegregateData(object):
             # return True if the text is classified as Person by both Spacy and Flair
             return False
 
+    @functools.lru_cache(maxsize=None)
     def contains_division_name(self, text):
         """ check if the text contains any division name that is present in our predefined division names list """
-        if self.contains_affiliation_name(text):
+        if self.contains_affiliation_name(text) or self.check_multi_words_cndtn(text, multiple_words_affltn_list):
+            return False
+
+        # check if the given word is a profession
+        if self.is_profession(text):
             return False
 
         # detect the language, default is english
@@ -280,6 +367,7 @@ class SegregateData(object):
 
         return bool(matching_words)
 
+    @functools.lru_cache(maxsize=None)
     def translate_text(self, text, from_code=None):
         """ translate the given text from teh language with code 'from_code' to english """
 
@@ -289,6 +377,9 @@ class SegregateData(object):
                 from_code = detect(text)
             except:
                 from_code = 'en'
+
+        if from_code == 'en':
+            return text
 
         # translate the text to english by using 'argostranslate' package API.
         translated_text = text
@@ -302,6 +393,34 @@ class SegregateData(object):
 
         return translated_text
 
+    def check_multi_words_cndtn(self, text, multiple_words_items_list):
+        # Lemmatize the input string using spaCy and remove stop words
+        lemmatized_words = {word.lemma_.lower().replace(" ", "") for word in nlp(text) if
+                            word.is_alpha and word.text.lower() not in nlp.Defaults.stop_words}
+
+        # Check if all the words in a word set are present in the lemmatized_words
+        for word_set in multiple_words_items_list:
+            if all(word in lemmatized_words for word in word_set):
+                return True
+            else:
+                detected_language = 'en'
+                try:
+                    detected_language = detect(text)
+                except:
+                    pass
+
+                translated_text = self.translate_text(text, detected_language)
+                # Lemmatize the input string using spaCy and remove stop words
+                lemmatized_words = {word.lemma_.lower().replace(" ", "") for word in nlp(translated_text) if
+                                    word.is_alpha and word.text.lower() not in nlp.Defaults.stop_words}
+
+                # Check if all the words in a word set are present in the lemmatized_words
+                for word_set in multiple_words_items_list:
+                    if all(word in lemmatized_words for word in word_set):
+                        return True
+
+        return False
+    @functools.lru_cache(maxsize=None)
     def is_profession(self, text):
         """ check if the given text is a profession or not """
 
@@ -310,9 +429,15 @@ class SegregateData(object):
         # contain any word related to profession.
 
         split_words_list = ['-', '/']
+        if self.check_multi_words_cndtn(text, multiple_words_affltn_list):
+            return False
+        elif self.check_multi_words_cndtn(text, multiple_words_profession_list):
+            return True
 
         for split_char in split_words_list:
             if split_char in text:
+                # there are some words that are with some seperators like '-' for some words, we have to remove the seperator and join them
+                # for some words we have to divide them to two words and check them individually
                 split_words = text.split(split_char)
 
                 if self.is_profession(split_words[0]) or self.is_profession(split_words[1]):
@@ -352,12 +477,12 @@ class SegregateData(object):
             # Iterate through the parts of the item
             for idx, part in enumerate(parts):
                 # Check if the current part is a separator word
-                if part in self.separator_items:
+                if part in self.separator_items_set:
                     if not preceding_word and idx != 0:
-                        preceding_word = self.separator_items[idx - 1]
+                        preceding_word = self.separator_items_set[idx - 1]
 
                     # If it's not preceded by a stop word, add the current output to the result
-                    if preceding_word not in self.separator_items and preceding_word not in stop_words:
+                    if preceding_word not in self.separator_items_set and preceding_word not in stop_words:
                         output_data.append(current_output)
                         current_output = ""
                     # Add the separator word to the result
@@ -366,7 +491,7 @@ class SegregateData(object):
                     # Add the current part to the current output
                     current_output += part + " "
 
-                # # Update the preceding word
+                # Update the preceding word
                 preceding_word = part
 
             # Add the last output item to the result
@@ -404,6 +529,7 @@ class SegregateData(object):
                     if '-' in strings_list[i]:
                         i += 1
                         continue
+
                     # check if the text is a job title or not
                     profession_check = self.is_profession(strings_list[i])
                     # if the given text is a profession
@@ -413,12 +539,11 @@ class SegregateData(object):
                         # check if the next item is a division or not
                         contains_division_name = self.contains_division_name(strings_list[i + 1])
                         # check if the next item is an affiliation or not
-                        contains_affiliation_name = True if self.check_affiliation(
-                            strings_list[i + 1]) == 'true' else False
+                        contains_affiliation_name_check = True if self.check_affiliation(strings_list[i + 1]) == 'true' else False
 
                         # if the current item is a profession and the next items is not either division or an Affiliation.
                         c2 = profession_check and not (
-                                contains_division_name or contains_affiliation_name)
+                                contains_division_name or contains_affiliation_name_check)
 
                         # if the current and next items are Job Titles or the current item is
                         # job title and the next items are not Division or Affiliation.
@@ -436,15 +561,16 @@ class SegregateData(object):
                                 strings_list[i] = combined_str
                                 del strings_list[i + 1]
                     else:
-                        # if the current item is not a job title, then also checking if we can merge them by validating
-                        # against self.merged_docx_strings
-                        combined_str = strings_list[i] + " " + strings_list[i + 1]
-
-                        normalized_combined_str = combined_str.replace(" ", "").lower()
-
-                        if normalized_combined_str in self.merged_docx_strings:
-                            strings_list[i] = combined_str
-                            del strings_list[i + 1]
+                        # # if the current item is not a job title, then also checking if we can merge them by validating
+                        # # against self.merged_docx_strings
+                        # combined_str = strings_list[i] + " " + strings_list[i + 1]
+                        #
+                        # normalized_combined_str = combined_str.replace(" ", "").lower()
+                        #
+                        # if normalized_combined_str in self.merged_docx_strings:
+                        #     strings_list[i] = combined_str
+                        #     del strings_list[i + 1]
+                        pass
 
                     i += 1
 
@@ -508,9 +634,9 @@ class SegregateData(object):
             extras = ''
 
         job_title, division, affiliation, extras = job_title.strip(), division.strip(), affiliation.strip(), extras.strip()
-        division_words_list = division.split(' ') if division else []
-        affiliation_words_list = affiliation.split(' ') if division else []
-        extras_words_list = extras.split(' ') if division else []
+        division_words_list = division.split()
+        affiliation_words_list = affiliation.split()
+        extras_words_list = extras.split()
 
         # if the current length of the line is greater than self.min_previous_str_len_merge_single_wrd characters, and the next is a single word,
         # then it is more probable to join the next single word to the current string.
@@ -529,6 +655,10 @@ class SegregateData(object):
                     division += ' ' + extras
                     division = ''
 
+        if len(job_title) >= self.min_previous_str_len_merge_single_wrd and len(affiliation_words_list) == 1:
+            job_title += ' ' + affiliation
+            affiliation, affiliation_words_list = '', []
+
         if len(division) >= self.min_previous_str_len_merge_single_wrd and len(affiliation_words_list) == 1:
             division += ' ' + affiliation
             affiliation, affiliation_words_list = '', []
@@ -542,11 +672,315 @@ class SegregateData(object):
 
         return name, doubt, job_title, division, affiliation, extras
 
+    def split_text_by_keyword(self, text, classify_text):
+        # Split the text into sentences based on your requirements
+        sentences = []
+        words = text.split()
+        ministry_of_stop_words = stop_words.union(minister_of_startswith_ignore_list)
+        classify_text_words_lst = classify_text.split()
+        i = 0
+        while i < len(words):
+            if self.translate_text(words[i]).lower() == classify_text_words_lst[0] and i < len(
+                    words) - 1 and self.translate_text(words[i + 1]).lower() == classify_text_words_lst[
+                1] and i >= 1 and (self.translate_text(words[i - 1]) not in ministry_of_stop_words):
+                sentences.append(" ".join(words[:i]))
+                words = words[i:]
+                break
+
+            i += 1
+
+        # Append the last sentence
+        if words:
+            sentences.append(" ".join(words))
+
+        return sentences
+
+    def seperate_and_classify_text_by_keyword(self, name, doubt, job_title, division, affiliation, extras, en_trans_job_title,
+                                              en_trans_division,
+                                              en_trans_affiliation, en_trans_extras):
+
+        if doubt:
+            regex = r'(de|del|van)$'
+            name_match = re.search(regex, name, re.IGNORECASE)
+            if name_match:
+                name += ' ' + doubt
+                doubt = ''
+
+        # check if the job title, Division, Affiliation starts or ends with certain text
+        pattern_starts_with_regex = '^(de|du|des|del)\s'
+        pattern_ends_with_regex = r'(de|du|des|del)$'
+        cols_list = [doubt, job_title, division, affiliation, extras]
+
+        for idx in range(len(cols_list[1:])):
+            start_data_match = re.search(pattern_starts_with_regex, cols_list[idx], re.IGNORECASE)
+            end_data_match = re.search(pattern_ends_with_regex, cols_list[idx], re.IGNORECASE)
+
+            if start_data_match:
+                cols_list[idx - 1] += ' ' + cols_list[idx]
+                cols_list[idx] = ''
+
+            if end_data_match and idx < len(cols_list) - 1:
+                cols_list[idx] += ' ' + cols_list[idx + 1]
+                cols_list[idx + 1] = ''
+
+        doubt, job_title, division, affiliation, extras = cols_list
+        try:
+            # if there is some text that starts with 'ministry' and also contains 'government' in 'affiliation' or 'extras',
+            # then we should not divide it.
+            pattern = r'(?=.*ministry of)(?=.*government of)'
+            mnstry_affltn_cdtn = re.search(pattern, en_trans_affiliation, re.IGNORECASE)
+            mnstry_extras_cdtn = re.search(pattern, en_trans_extras, re.IGNORECASE)
+
+            if mnstry_affltn_cdtn or mnstry_extras_cdtn:
+                affiliation_split_data_and_classify.remove('government of')
+            else:
+                affiliation_split_data_and_classify.add('government of')
+
+            for classify_text in affiliation_split_data_and_classify:
+                if not en_trans_job_title.startswith(classify_text) and (
+                        classify_text in job_title.lower() or classify_text in en_trans_job_title.lower()):
+
+                    words_list = self.split_text_by_keyword(job_title, classify_text)
+                    job_title = words_list[0]
+
+                    if len(words_list) >= 2:
+                        affiliation = words_list[1] + ' ' + division + ' ' + affiliation
+                        division = ''
+
+                elif not en_trans_division.startswith(classify_text) and (
+                        classify_text in division.lower() or classify_text in en_trans_division.lower()):
+
+                    words_list = self.split_text_by_keyword(division, classify_text)
+                    if len(words_list) >= 2:
+                        division = words_list[0]
+
+                        if len(words_list) >= 2:
+                            affiliation = words_list[1] + ' ' + affiliation
+
+                elif not en_trans_affiliation.lower().startswith(classify_text) and (
+                        classify_text in affiliation.lower() or classify_text in en_trans_affiliation.lower()):
+
+                    words_list = self.split_text_by_keyword(affiliation, classify_text)
+                    division += ' ' + words_list[0]
+
+                    if len(words_list) >= 2:
+                        affiliation = words_list[1]
+                    else:
+                        affiliation = ''
+
+                elif (classify_text in extras.lower() or classify_text in en_trans_extras.lower()):
+                    if en_trans_extras.lower().startswith(classify_text):
+                        words_list = self.split_text_by_keyword(extras, classify_text)
+                        division += ' ' + affiliation
+                        affiliation = words_list[0]
+
+                    else:
+                        words_list = self.split_text_by_keyword(extras, classify_text)
+                        division += ' ' + affiliation + ' ' + words_list[0]
+                        affiliation = words_list[1]
+
+                    extras = ''
+
+                en_trans_job_title, en_trans_division, en_trans_affiliation, en_trans_extras = self.translate_text(job_title), \
+                                                                                               self.translate_text(division),\
+                                                                                               self.translate_text(affiliation), \
+                                                                                               self.translate_text(extras)
+        except Exception as e:
+            issue_str = name + '  ' + '***************>' + '  ' + str(e)
+            failed_minister_gvrnmt_split_list.append(issue_str)
+
+        if division.split():
+            division_last_word = division.split()[-1].strip().lower()
+            if division_last_word in minister_of_startswith_ignore_list:
+                # if the division is 'Federal' and the affilaition is 'Ministry of Economic'.
+                affiliation = division.split()[-1] + ' ' + affiliation
+                division = ' '.join(division.split()[:-1])
+
+        return name, doubt, job_title, division, affiliation, extras
+
+    def classify_data_final_stage(self, job_title, division, affiliation, extras):
+        if self.is_profession(extras):
+            job_title += ' ' + division + ' ' + affiliation + ' ' + extras
+            extras = ''
+            division = ''
+            affiliation = ''
+
+        if self.contains_division_name(extras):
+            division += ' ' + affiliation + ' ' + extras
+            affiliation = ''
+            extras = ''
+
+        if self.check_affiliation(extras) == "true":
+            affiliation += ' ' + extras
+            extras = ''
+
+        affiliation_words_lst = affiliation.split()
+
+        if len(affiliation_words_lst) > 1:
+            first_word = affiliation_words_lst[0]
+            if self.contains_division_name(first_word):
+                division += ' ' + affiliation
+                affiliation = ''
+
+        return job_title, division, affiliation, extras
+
+    def handle_division_field(self, job_title, division, affiliation):
+        if affiliation:
+            if self.contains_division_name(affiliation):
+                if self.contains_division_name(division):
+                    division += ' ' + affiliation
+                    affiliation = ''
+                else:
+                    job_title += ' ' + division
+                    division = affiliation
+                    affiliation = ''
+
+        return job_title, division, affiliation
+
+    def join_split_data_across_cols(self, input_list, special_chars_set):
+        common_chr_cnt = 0
+        start_idx = None
+
+        for idx, string in enumerate(input_list):
+            string_set = set(string)
+            common_characters = string_set.intersection(special_chars_set)
+            if common_characters:
+                common_chr_cnt += 1
+                if not start_idx:
+                    start_idx = idx
+
+            if common_chr_cnt == 2:
+                common_char_fnd = list(common_characters)[0]
+                before_special_chr, after_special_chr = input_list[idx].split(common_char_fnd)
+                input_list[start_idx] = ' '.join(input_list[start_idx:idx]) + ' ' + before_special_chr + common_char_fnd
+                input_list[idx] = after_special_chr
+                input_list[start_idx + 1:idx] = [''] * (idx - (start_idx + 1))
+                common_chr_cnt = 0
+                start_idx = None
+
+        return input_list
+
+    def set_strict_affiliation_words(self, data_cols_list):
+
+        for idx, each_str_item in enumerate(data_cols_list):
+
+            pattern = r'(?<!\bof\s)(?<!\bfor\s)\b(' + '|'.join(re.escape(phrase) for phrase in strict_affiliation_keywords) + r')\b'
+
+            # Split the input string using the regular expression pattern
+            result = re.split(pattern, each_str_item, flags=re.IGNORECASE)
+
+            # Remove any empty strings from the result
+            result = [part for part in result if part and part.split() and len(part.split()[0]) > 1]
+
+            if len(result) > 1:
+                # this means the keyword is not in affiliation but in job title or division cols
+                if idx < len(data_cols_list) - 1:
+                    data_cols_list[idx] = result[0]
+                    data_cols_list[-1] = ' '.join(result[1:]) + data_cols_list[-1]
+
+                # this means the keyword is not in affiliation, but it got joined
+                elif idx == len(data_cols_list) - 1:
+                    data_cols_list[idx - 1] += ' ' + result[0]
+                    data_cols_list[-1] = ' '.join(result[1:])
+
+        return data_cols_list
+
+    def handle_job_tite_text_keywords(self, job_title, division, affiliation):
+        head_of_division_pattern = r'(?i)(.*?)(Head of Division)(.*?)("(?:[^"]*)"|$)'
+
+        head_of_division_match = re.search(head_of_division_pattern, job_title, re.IGNORECASE)
+
+        if head_of_division_match:
+            first_part = head_of_division_match.group(1) + head_of_division_match.group(2)
+            second_part = head_of_division_match.group(3) + head_of_division_match.group(4).strip('" ')
+
+            stop_wrds_pattern = r'^(of|for|at)\b'
+            if not re.search(stop_wrds_pattern, second_part.strip()):
+                capitalized_word_pattern = r'\b[A-Z][a-z]*\b'
+
+                if bool(re.search(capitalized_word_pattern, second_part)):
+                    job_title = first_part
+
+                    if self.check_affiliation(second_part) in ['true', 'partial_true']:
+                        affiliation = second_part + ' ' + division + ' ' + affiliation
+                    else:
+                        division = second_part + ' ' + division
+
+        return job_title, division, affiliation
+
+    def correct_job_keywords_for_job_title(self, job_title, en_trans_job_title, division):
+        # check for '-'
+        original_division = division
+        original_job_title = job_title
+        hyphen_cnt = job_title.count('-')
+        if hyphen_cnt == 1:
+            job_title_words = job_title.split('-')
+            if len(job_title_words) == 2 and job_title_words[1] and len(job_title_words[0]) > 3:
+                if not self.is_profession(job_title_words[1]):
+                    division = job_title_words[1] + ' ' + division
+                    job_title = job_title_words[0]
+
+        # Use re.search to find the match
+        division_names_en_job_title_match = re.search(division_names_pattern, en_trans_job_title, re.IGNORECASE)
+        division_names_job_title_match = re.search(division_names_pattern, job_title, re.IGNORECASE)
+        exclude_text_pattern = r'\b(?:' + '|'.join(map(re.escape, job_title_startswith_ignore_set)) + r')\b'
+        check_exclude_pattern = re.search(exclude_text_pattern, en_trans_job_title, re.IGNORECASE)
+        if division_names_en_job_title_match and division_names_job_title_match:
+            # there are some names like 'federal department of', in this case we should not split the string.
+            # so, we are handling these cases
+
+            # Extract the matched parts
+            job_title = division_names_job_title_match.group(1)
+            matched_division_name = f"{division_names_job_title_match.group(2)} {division_names_job_title_match.group(3)}"  # Include 'of' or 'for'
+            part2 = division_names_job_title_match.group(4)
+
+            division = matched_division_name + ' ' + part2 + ' ' + division
+
+            if check_exclude_pattern:
+                # Split the string from the right end, removing the last word
+                split_parts = job_title.rsplit(' ', 1)
+
+                # Join the split parts to form the modified string
+                job_title = split_parts[0]
+                division = split_parts[1] + ' ' + division
+
+            if job_title.split()[-1] in stop_words:
+                job_title = original_job_title
+                division = original_division
+
+        # if the text is in other languages
+        elif division_names_en_job_title_match and not division_names_job_title_match:
+
+            job_title_words = job_title.split()
+            # go for each word
+            for idx in range(1, len(job_title_words) - 1):
+                # if the before word is not a stop word and the current word is like division or department
+                if job_title_words[idx-1].lower() not in other_lang_stop_words_set and (self.translate_text(job_title_words[idx]).lower() in department_names_set or job_title_words[idx].lower() in department_names_set):
+                    # if the next word is a stop word like 'of/for...'
+                    if job_title_words[idx+1].lower() in other_lang_stop_words_set or job_title_words[idx+1].lower() in stop_words:
+                        # if it contains words like 'federal' or 'national'
+                        if check_exclude_pattern:
+                            # the word before the word should not be a stop word for ex: we will avoid - 'for federal department of'
+                            if job_title_words[idx-2].lower() not in other_lang_stop_words_set and job_title_words[idx-2].lower() not in stop_words:
+                                # check if the word before the current word is federal/national
+                                if self.translate_text(job_title_words[idx-1]).lower() in job_title_startswith_ignore_set or job_title_words[idx-1].lower() in job_title_startswith_ignore_set:
+                                    # classify the word such that for ex: 'federal department of' will be in the 'division' column
+                                    job_title = ' '.join(job_title_words[:idx-1])
+                                    division = ' '.join(job_title_words[idx-1:]) + ' ' + division
+                                    break
+                        else:
+                            job_title = ' '.join(job_title_words[:idx])
+                            division = ' '.join(job_title_words[idx:]) + ' ' + division
+
+        return job_title, division
+
     def classify_extracted_data(self, processed_data):
         """ classify the extracted data to multiple columns """
         current_group = ""
         current_entity = ""
         results = []
+        # there are some records, whose names are mixed up in the data, we will find them
+        title_misclassified_names = []
 
         for item in processed_data:
             # remove the spaces
@@ -564,21 +998,27 @@ class SegregateData(object):
             title_match = title_match_pattern.search(item[0])
             title = title_match.group().strip() if title_match else ""
             name = item[0].replace(title, "").strip() if title_match else item[0]
-
             doubt, division_doubt, company_doubt, job_title, division, affiliation, extras = "", "", "", "", "", "", ""
             remaining_items = item[1:]
 
             remaining_items = self.split_text_at_separator(remaining_items)
             if len(remaining_items) > 1:
                 if self.is_profession(remaining_items[0]) and self.is_profession(remaining_items[1]):
-                    remaining_items[0] += ' ' + remaining_items[1]
-                    remaining_items.remove(remaining_items[1])
+                    if not self.check_multi_words_cndtn(remaining_items[1], multiple_words_affltn_list):
+                        remaining_items[0] += ' ' + remaining_items[1]
+                        remaining_items.remove(remaining_items[1])
+
                 elif self.contains_division_name(remaining_items[0]) and self.contains_division_name(
                         remaining_items[1]):
-                    remaining_items[0] += ' ' + remaining_items[1]
-                    remaining_items.remove(remaining_items[1])
-                elif self.contains_affiliation_name(remaining_items[0]) and self.contains_affiliation_name(
-                        remaining_items[1]):
+                    comb_str = remaining_items[0] + remaining_items[1]
+                    job_title_division_comb_set = set(comb_str.split())
+
+                    if not job_title_division_comb_set.intersection(text_separator_items_set):
+                        if not self.check_multi_words_cndtn(remaining_items[1], multiple_words_affltn_list):
+                            remaining_items[0] += ' ' + remaining_items[1]
+                            remaining_items.remove(remaining_items[1])
+
+                elif self.check_affiliation(remaining_items[0]) in ['true', 'partial_true'] and self.check_affiliation(remaining_items[1]) in ['true', 'partial_true']:
                     remaining_items[0] += ' ' + remaining_items[1]
                     remaining_items.remove(remaining_items[1])
 
@@ -588,8 +1028,7 @@ class SegregateData(object):
                     remaining_items[1] += ' ' + remaining_items[2]
                     remaining_items.remove(remaining_items[2])
 
-                elif self.contains_affiliation_name(remaining_items[1]) and self.contains_affiliation_name(
-                        remaining_items[2]):
+                elif self.check_affiliation(remaining_items[1]) in ['true', 'partial_true'] and self.check_affiliation(remaining_items[2]) in ['true', 'partial_true']:
                     remaining_items[1] += ' ' + remaining_items[2]
                     remaining_items.remove(remaining_items[2])
 
@@ -600,7 +1039,18 @@ class SegregateData(object):
             # Handling job_title based on your original conditions
             if len(remaining_items) >= 3:
                 if self.is_profession(remaining_items[0]):
-                    job_title, division, affiliation = remaining_items[:3]
+                    job_title = remaining_items[0]
+
+                    if self.check_affiliation(remaining_items[2]) == 'false' and self.contains_division_name(remaining_items[2]):
+                        division += ' ' + ' '.join(remaining_items[1:3])
+                        affiliation = ''
+
+                    elif self.check_affiliation(remaining_items[1]) == 'true' and not self.contains_division_name(remaining_items[1]):
+                        affiliation = ' '.join(remaining_items[1:])
+                        division = ''
+                    else:
+                        division, affiliation = remaining_items[1:3]
+
                     extras = " ".join(remaining_items[3:])
                 elif self.contains_division_name(remaining_items[0]):
                     division, affiliation = remaining_items[:2]
@@ -618,6 +1068,10 @@ class SegregateData(object):
                                 division = remaining_items[2]
 
                             extras = " ".join(remaining_items[3:])
+
+                        elif self.check_affiliation(remaining_items[2]) == 'false' and self.contains_division_name(remaining_items[2]):
+                            division += ' ' + remaining_items[2]
+                            affiliation = ''
                         else:
                             division_doubt, company_doubt = remaining_items[1:3]
                             extras = " ".join(remaining_items[3:])
@@ -654,7 +1108,7 @@ class SegregateData(object):
                             if org_check_div_or_aff == "true":
                                 affiliation = remaining_items[1]
                             else:
-                                extras = remaining_items[1]
+                                extras += remaining_items[1]
                         else:
                             affiliation = remaining_items[0]
                             extras = remaining_items[1]
@@ -715,17 +1169,51 @@ class SegregateData(object):
                                                                                                            affiliation,
                                                                                                            extras)
 
+            en_trans_job_title = self.translate_text(job_title)
+            en_trans_division = self.translate_text(division)
+            en_trans_affiliation = self.translate_text(affiliation)
+            en_trans_extras = self.translate_text(extras)
+
+            # there are a lot of people with the surname as M., but there are some text whose details got mixed up with
+            # the next person details, so to seperate them, we are removing M. from the title regular expression
+            title_mispresent_cols = [name, job_title, division, affiliation, extras]
+            title_pattern_without_m = re.compile(
+                r"(Mr\.\s*|Rev\.\s*|Entity\:\s*|Msgr\.\s*|H\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Msgr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |Sra\.\s*|Mme|Sr\.\s*))?|Mrs\.\s*|Sra\.\s*|Sr\.\s*|Ms\.\s*|Dr\.\s*|Prof\.\s*|Mme|Ms|S\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Mme|Ms\ |Mr\ |Msgr\.\s*|Sra\ |Sr\ |Sra\.\s*|Sr\.\s*))?)")
+
+            for each_col in title_mispresent_cols:
+                if title_pattern_without_m.search(each_col):
+                    title_misclassified_names.append(name)
+
+            name, doubt, job_title, division, affiliation, extras = self.seperate_and_classify_text_by_keyword(name, doubt, job_title, division,
+                                                                                                  affiliation, extras,
+                                                                                                  en_trans_job_title,
+                                                                                                  en_trans_division,
+                                                                                                  en_trans_affiliation,
+                                                                                                  en_trans_extras)
+
+            job_title, division, affiliation, extras = self.classify_data_final_stage(job_title, division, affiliation, extras)
+
+            en_trans_job_title = self.translate_text(job_title)
+            job_title, division = self.correct_job_keywords_for_job_title(job_title, en_trans_job_title, division)
+
+            job_title, division = join_based_on_stopwords([job_title, division])
+
+            data_cols_list = [doubt, job_title, division, affiliation]
+
+            doubt, job_title, division, affiliation = self.join_split_data_across_cols(data_cols_list, special_chars_set)
+
+            data_cols_list.remove(doubt)
+
+            job_title, division, affiliation = self.set_strict_affiliation_words(data_cols_list)
+
+            job_title, division, affiliation = self.handle_job_tite_text_keywords(job_title, division, affiliation)
+
+            en_trans_job_title = self.translate_text(job_title)
+            en_trans_division = self.translate_text(division)
+            en_trans_affiliation = self.translate_text(affiliation)
+
             if affiliation_add_flag or division_add_flag:
                 affiliation = 'color:red_affiliation' + affiliation
-
-            # if not affiliation:
-            #     if (division_doubt or company_doubt):
-            #         affiliation_val = division_doubt if division_doubt else company_doubt
-            #         affiliation = 'color:red_affiliation' + affiliation_val
-            #
-            #     if (division_doubt and company_doubt):
-            #         division += ' ' + division_doubt
-            #         affiliation = 'color:red_affiliation' + company_doubt
 
             if self.check_affiliation(job_title) in ["true", "partial_true"] or self.contains_division_name(job_title):
 
@@ -739,69 +1227,26 @@ class SegregateData(object):
             if self.check_affiliation(division) in ["true", "partial_true"]:
                 division = 'color:red_division' + division
 
-            en_trans_job_title = self.translate_text(job_title)
-            en_trans_division = self.translate_text(division)
-            en_trans_affiliation = self.translate_text(affiliation)
-
             processed_op_data = [current_group, current_entity, title, name, doubt, en_trans_job_title, job_title,
                                  en_trans_division, division, en_trans_affiliation, affiliation, extras]
 
             processed_op_data = [data.strip() for data in processed_op_data]
 
+            # if debug_mode:
             # to print the data for debugging
             for k, m in zip(output_excel_column_names, processed_op_data):
                 print(k, ':', m)
 
             print('*' * 80)
 
+            print(name)
             results.append(processed_op_data)
 
+        print('$' * 100)
+        print('title_misclassified_names', title_misclassified_names)
+        print('$' * 100)
+
         return results
-
-
-def join_based_on_stopwords(data):
-    """ if the text is divided to 2 lines, and if it is starting or ending with a stop word or some of the below
-    patterns, then joining those 2 lines """
-    merged_data = []
-
-    for inner_list in data:
-        i = 1
-        while i < len(inner_list) - 1:
-            # last word of the line
-            current_str_last_word = inner_list[i].split()[-1]
-            # first word of the next line
-            next_str_first_word = inner_list[i + 1].split()[0]
-
-            # declare the end of the line patterns
-            end_patterns = ["'s", "'re", "'ve", "'ll", "'d", "n't", ",", "-"]
-
-            # Check the conditions for merging the strings
-            # Check if any of the following conditions are met:
-            # 1. The last word of the current string is in the list of stop words.
-            # 2. The first word of the next string is in the list of stop words.
-            # 3. The first character of the next string is lowercase.
-            # 4. The last word of the current string ends with any pattern in the list of end patterns.
-            # 5. The last word of the current string ends with '&'.
-            # 6. The first word of the next string starts with '&'.
-
-            if (current_str_last_word.lower() in stop_words or
-                    next_str_first_word.lower() in stop_words or
-                    next_str_first_word[0].islower() or
-                    any(current_str_last_word.endswith(pattern) for pattern in end_patterns) or
-                    current_str_last_word.endswith('&') or
-                    next_str_first_word.startswith('&')):
-
-                merged_string = inner_list[i] + " " + inner_list[i + 1]
-                inner_list[i] = merged_string
-                del inner_list[i + 1]
-
-            else:
-                i += 1
-
-        merged_data.append(inner_list)
-
-    return merged_data
-
 
 def save_data_to_excel_file(output):
     """ save the data to the excel file in the given path, with the given variable name """
@@ -847,9 +1292,14 @@ def classify_data():
 
     # segregate the data to predefined columns
     segregate_data_obj = SegregateData(processed_data, department_names_set, profession_names_lemmatized_set,
-                                       affiliation_names_set, text_separator_items, merged_docx_strings)
+                                       affiliation_names_set, text_separator_items_set, merged_docx_strings)
+
     output = segregate_data_obj.run()
-    # save_data_to_excel_file(output)
+
+    if not debug_mode:
+        save_data_to_excel_file(output)
+
+    print('failed_minister_gvrnmt_split_list', failed_minister_gvrnmt_split_list)
 
     return output
 

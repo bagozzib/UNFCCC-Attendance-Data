@@ -4,9 +4,9 @@ from inputs_file import pdf_path
 
 def should_add_bold_prefix(text):
     """ Some lines should not be prefixed with 'Entity:' keyword even though, they are in bold letters """
-    pattern = r'^[-+]?\d*\.?\d+$'
-    if text.startswith("FCCC/CP") or re.match(pattern, text):
-        return False
+    # pattern = r'^[-+]?\d*\.?\d+$'
+    # if text.startswith("FCCC/CP") or re.match(pattern, text):
+    #     return False
 
     return True
 
@@ -60,9 +60,11 @@ def extract_with_bold_annotations(pdf_path):
                         if current_group:
                             nested_lines_with_bold.append(current_group)
                             current_group = []
-
+                # print(chars, ch)
+                # print('-'*30)
                 # Check if text should be prefixed with bold
-                if "Bold" in ch["fontname"] and not current_line.startswith("Entity:") and should_add_bold_prefix(ch["text"]):
+
+                if "HCKPBK" not in ch["fontname"] and not current_line.startswith("Entity:") and should_add_bold_prefix(ch["text"]):
                     current_line += "Entity:"
 
                 current_line += ch["text"]
@@ -121,26 +123,76 @@ def clean_list(lst):
 
 # This contains the list of pdf extracted data.
 grouped_output = extract_with_bold_annotations(pdf_path)
+# grouped_output = extract_with_bold_annotations("C://Users//rakes//Downloads//2008_COP_14_Poznan_Part_2-3-4.pdf")
+
+def remove_text_patterns(grouped_output):
+    # *******************************************
+    # for each pdf, the starting of the each page contains differnt things like 'page numbers' or 'FCCC/CP' like that,
+    # we will carefully analyze and remove them
+    # pattern to remove the row containing FCCC and its previous row
+    pattern = re.compile(r'^.*\bFCCC/CP/\b.*$')
+
+    # pattern to remove the row containing page numbers and its previous row
+    # pattern = re.compile(r"^\d+$")
+
+    # be careful with this line to remove the pattern containing fccc and the nest line
+    for index, line in enumerate(grouped_output):
+        if pattern.match(line[0]):  # assuming the regex should match the first item in the sublist
+            if index > 0:  # to ensure there's a line before it
+                del grouped_output[index]
+                del grouped_output[index - 1]
+            else:
+                del grouped_output[index]
+
+    return grouped_output
+
+grouped_output = remove_text_patterns(grouped_output)
+
+# out_list = []
+# for d in grouped_output:
+#     if d[0] and '(continued)' not in d[0] and 'Page' not in d[0] and '*' not in d[0]:
+#         in_list = []
+#         for each_inner_item in d:
+#             if '' == each_inner_item:
+#                 out_list.append(in_list)
+#                 in_list = []
+#             else:
+#                 in_list.append(each_inner_item)
+#
+#         out_list.append(in_list)
+#
+# out_list1 = []
+# for input_list in out_list:
+#     entity_list = []
+#     non_entity_list = []
+#     current_entity = []
+#
+#     for item in input_list:
+#         if item.startswith('Entity:'):
+#             if item != 'Entity:':
+#                 current_entity.append(item)
+#         else:
+#             if current_entity:
+#                 entity_list.append('Entity:' + ' '.join(current_entity).replace('Entity:', ''))
+#                 current_entity = []
+#             non_entity_list.append(item)
+#
+#     # Append the last entity group if it ends with 'Entity:'
+#     if current_entity:
+#         entity_list.append('Entity:' + ' '.join(current_entity).replace('Entity:', ''))
+#
+#     out_list1.append(entity_list)
+#     out_list1.append(non_entity_list)
+#
+# for kk in out_list1:
+#     if kk:
+#         print(kk)
 
 
-# *******************************************
-# for each pdf, the starting of the each page contains differnt things like 'page numbers' or 'FCCC/CP' like that,
-# we will carefully analyze and remove them
-# pattern to remove the row containing FCCC and its previous row
-pattern = re.compile(r'^.*\bFCCC/CP/\b.*$')
-
-# pattern to remove the row containing page numbers and its previous row
-# pattern = re.compile(r"^\d+$")
-
-# be careful with this line to remove the pattern containing fccc and the nest line
-for index, line in enumerate(grouped_output):
-    if pattern.match(line[0]):  # assuming the regex should match the first item in the sublist
-        if index > 0:  # to ensure there's a line before it
-            del grouped_output[index]
-            del grouped_output[index - 1]
-        else:
-            del grouped_output[index]
 
 for d in grouped_output:
-    if d[0] and '(continued)' not in d[0]:
+    if d[0] and '(continued)' not in d[0] and d[0]!='Entity:':
+            # and 'Page' not in d[0]\
+            # and '*' not in d[0]\
+
         print(d)
