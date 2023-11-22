@@ -1,225 +1,140 @@
 import pdfplumber
 import re
-from inputs_file import pdf_path, title_match_pattern
 
-def should_add_bold_prefix(text):
-    """ Some lines should not be prefixed with 'Entity:' keyword even though, they are in bold letters """
-    # pattern = r'^[-+]?\d*\.?\d+$'
-    # if text.startswith("FCCC/CP") or re.match(pattern, text):
-    #     return False
+title_match_pattern = re.compile(
+    r"(Mr\.\s*|S\$ra\.|HE\ Mr\.|HE\ Mr\.|S\:E\.\ Sra\.|HE\ Mr|St\.|1LE\ Mr\.|Mr\_|H\.RH\.|SE\.|HE\.|\$\.E\.|SE\.Sr\.|HLE\.|HEMr\.|ILE\.\ Mr\.|HE\.\ Ms\.|HE\.\ Mr\.|H\.R\.H\.\s*|Mx\.\s*|H\.H\.\s*|Ind\.\s*|His\ |Ind\ |Ms\ |Mr\ |Sra\ |Sr\ |M\ |On\ |M\ |Fr\ |H\.O\.\s*|Rev\ |Mme\ |Sr\ |Msgr\ |On\.\s*|Fr\.\s*|Rev\.\s*|H\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |Sra\.\s*|Mme|Sr\.\s*|Msgr\.\s*))?|Msgr\.\s*|Mrs\.\s*|Sra\.\s*|Sr\.\s*|Ms\.\s*|Dr\.\s*|Prof\.\s*|M\.\s*|Mme|Ms|S\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Mme|Mr|Ms|Dr|Msgr\.\s*|M\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |M\ |Sra\.\s*|Sr\.\s*))?)")
 
-    return True
+def extract_page_wise_column_data(file_path, x0_threshold):
+    with pdfplumber.open(file_path) as pdf:
+        all_pages_data = []
 
-def merge_entity_lines(groups):
-    """ if the entity text is split across lines,  merge them """
-    merged_groups = []
-    i = 0
-    while i < len(groups):
-        group = groups[i]
-        if group[0].startswith("Entity:") and len(group) > 1:
-            merged_group = [" ".join(group)]
-            merged_group = [merged_group[0].replace(' Entity:', ' ')]
-            merged_groups.append(merged_group)
+        for page in pdf.pages:
+            page_data = []
+
+            words = page.extract_words()
+            # Extract x0 values for 'Mr.' in each column
+            x0_first_column_mr = [word['x0'] for word in words if word['text'] == 'Mr.' and word['x0'] <= x0_threshold]
+            x0_second_column_mr = [word['x0'] for word in words if word['text'] == 'Mr.' and word['x0'] > x0_threshold]
+
+            # Process the first column
+            first_column_words = [word for word in words if word['x0'] <= x0_threshold]
+            process_column_words(first_column_words, page_data, x0_first_column_mr, x0_second_column_mr, x0_threshold)
+
+            # Process the second column
+            second_column_words = [word for word in words if word['x0'] > x0_threshold]
+            process_column_words(second_column_words, page_data, x0_first_column_mr, x0_second_column_mr, x0_threshold)
+
+            all_pages_data.append(page_data)
+
+        return all_pages_data
+
+def process_column_words(column_words, column_data, x0_first_column_mr, x0_second_column_mr, x0_threshold):
+    """
+    Processes sorted words of a column and appends them line-wise to the column data.
+    """
+    current_line_top = None
+    line_text = ''
+    for word in column_words:
+        if current_line_top is None or abs(word['top'] - current_line_top) > 5:
+            if line_text:
+                column_data.append(line_text.strip())
+            line_text = word['text']
+            current_line_top = word['top']
         else:
-            merged_groups.append(group)
-        i += 1
+            line_text += ' ' + word['text']
+    if line_text:
+        column_data.append(line_text.strip())
 
-    return merged_groups
+    # Add 'entity:' prefix to text in the same column with lowercase and x0 less than 'Mr.'
+    if x0_first_column_mr and x0_first_column_mr[0] > x0_threshold:
+        for i, line in enumerate(column_data):
+            if line.isupper() and all(word['x0'] < x0_first_column_mr[0] for word in column_words):
+                column_data[i] = 'entity:' + line
 
-def old_extract_with_bold_annotations(pdf_path):
-    """ Extract the data from the pdf and add 'Entity:' to the bold data """
-    nested_lines_with_bold = []
-    current_group = []
-    current_line = ""
-    last_y = None
-    last_char_height = 0
-    previous_y = float('inf')
-    add_bold_prefix = False
+    if x0_second_column_mr and x0_second_column_mr[0] > x0_threshold:
+        for i, line in enumerate(column_data):
+            if line.isupper() and all(word['x0'] < x0_second_column_mr[0] for word in column_words):
+                column_data[i] = 'entity:' + line
 
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            chars = page.chars
+file_path = "C:\\Users\\rakes\\Music\\pdfconverted image files\\1997_COP_3_Kyoto.pdf"
+all_pages_data = extract_page_wise_column_data(file_path, 300)
 
-            for ch in chars:
-                # Detect a new column by comparing the y-coordinate
-                if ch["top"] < previous_y:
-                    if current_line:
-                        current_group.append(current_line.strip())
-                        current_line = ""
-                    if current_group:
-                        nested_lines_with_bold.append(current_group)
-                        current_group = []
+# Extracting individual persons' details using the title pattern
+persons_data = []
+current_person = []
 
-                # Check for a new line by comparing the y-coordinate
-                # if last_y is not None and ch["top"] > (last_y + last_char_height):
-                    if current_line:
-                        current_group.append(current_line.strip())
-                        current_line = ""
-                    # Check for a larger than usual gap between lines
-                    if ch["top"] - last_y > 1.39 * last_char_height:
-                        if current_group:
-                            nested_lines_with_bold.append(current_group)
-                            current_group = []
-                # print('-'*30)
-                # Check if text should be prefixed with bold
-                # if ch["height"] == '12' and not current_line.startswith("Entity:") and should_add_bold_prefix(ch["text"]):
-                #     current_line += "Entity:"
+# Initialize x0 values for 'Mr.' in each column for each page
+for page_data in all_pages_data:
+    x0_first_column_mr = None
+    x0_second_column_mr = None
+    for line in page_data:
+        try:
+            if 'Mr.' in line:
+                if x0_first_column_mr is None:
+                    x0_first_column_mr = [word['x0'] for word in page_data if word['text'] == 'Mr.' and word['x0'] <= 300]
+                elif x0_second_column_mr is None:
+                    x0_second_column_mr = [word['x0'] for word in page_data if word['text'] == 'Mr.' and word['x0'] > 300]
+        except:
+            pass
 
-                current_line += ch["text"]
-                last_y = ch["top"]
-                last_char_height = ch["height"]
-                previous_y = last_y  # Store the last y-coordinate for next iteration's comparison
-
-            # Ensure the last line and group are added
-            if current_line:
-                current_group.append(current_line.strip())
-            if current_group:
-                nested_lines_with_bold.append(current_group)
-                current_group = []
-
-    nested_lines_with_bold = merge_entity_lines(nested_lines_with_bold)
-    return nested_lines_with_bold
-
-import pdfplumber
-import re
-
-person_titles_regex = r"(Mr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |M\ |On\ |M\ |Fr\ |Rev\ |Mme\ |Sr\ |Msgr\ |On\.\s*|Fr\.\s*|Rev\.\s*|H\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |Sra\.\s*|Mme|Sr\.\s*|Msgr\.\s*))?|Msgr\.\s*|Mrs\.\s*|Sra\.\s*|Sr\.\s*|Ms\.\s*|Dr\.\s*|Prof\.\s*|M\.\s*|Mme|Ms|S\.E(?:\.\s*(?:Ms\.\s*|Mr\.\s*|Mme|Mr|Ms|Dr|Msgr\.\s*|M\.\s*|Ms\ |Mr\ |Sra\ |Sr\ |M\ |Sra\.\s*|Sr\.\s*))?)"
-
-def extract_with_bold_annotations(pdf_path):
-    data_groups = []
-    current_group = []
-    current_person_data = []
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            lines = page.extract_text().split('\n')
-
-            for line in lines:
-                if re.match(person_titles_regex, line):
-                    if current_person_data:
-                        current_group.append(current_person_data)
-                    current_person_data = [line]
-                else:
-                    current_person_data.append(line)
-
-            if current_group:
-                data_groups.append(current_group)
-                current_group = []
-
-    return data_groups
-
-def clean_item(item):
-    """ conditions to clean the data """
-    output_items = []
-
-        # Check for the presence of 'FCCC' and two occurrences of 'Entity:'
-    if 'FCCC' in item and len(re.findall(r'Entity:', item)) == 2:
-        item = item.split('Entity:', 2)[-1]  # Keep everything after the second 'Entity:'
-
-        # Check for the presence of two 'Entity:' and absence of 'FCCC'
-    elif len(re.findall(r'Entity:', item)) == 2 and 'FCCC' not in item:
-        item = item.replace('Entity:', '')
-
-        # Check for one 'Entity:' not at the start
-    elif item.find('Entity:') > 0:
-        prefix, entity_content = item.split('Entity:', 1)
-
-        if prefix.strip():
-            output_items.append(prefix.strip())
-
-        item = 'Entity:' + entity_content.strip()
-
-    # The remaining standard cleaning
-    item = re.sub(r'Entity:\s*\d+\s*', '', item)  # Remove 'bold' + numbers
-    item = re.sub(r'Entity: FCCC/[\w/]+', '', item)  # Remove 'Entity: FCCC/CP/2014/INF.2' pattern
-    output_items.append(item.strip())
-
-    return output_items
-
-def clean_list(lst):
-    cleaned = []
-    for item in lst:
-        cleaned_items = clean_item(item)
-        if len(cleaned_items) == 2 and 'Entity:' not in cleaned_items[0] and 'Entity:' in cleaned_items[1]:
-            output_list = [[item] for item in cleaned_items]
-            return output_list
-
-        cleaned.extend(cleaned_items)  # We use extend because clean_item returns a list
-    return cleaned if cleaned else None
-
-# This contains the list of pdf extracted data.
-# grouped_output = extract_with_bold_annotations(pdf_path)
-
-grouped_output = extract_with_bold_annotations("C:\\Users\\rakes\\Music\\pdfconverted image files\\1995_COP_1_Berlin.pdf")
-
-def remove_text_patterns(grouped_output):
-    # *******************************************
-    # for each pdf, the starting of the each page contains differnt things like 'page numbers' or 'FCCC/CP' like that,
-    # we will carefully analyze and remove them
-    # pattern to remove the row containing FCCC and its previous row
-    pattern = re.compile(r'^.*\bFCCC/CP/\b.*$')
-
-    # pattern to remove the row containing page numbers and its previous row
-    # pattern = re.compile(r"^\d+$")
-
-    # be careful with this line to remove the pattern containing fccc and the nest line
-    for index, line in enumerate(grouped_output):
-        if pattern.match(line[0]):  # assuming the regex should match the first item in the sublist
-            if index > 0:  # to ensure there's a line before it
-                del grouped_output[index]
-                del grouped_output[index - 1]
+    for line in page_data:
+        if title_match_pattern.match(line):
+            # Start a new person's details
+            if current_person:
+                persons_data.append(current_person)
+            current_person = [line]
+        else:
+            # Add 'entity:' prefix to text in the same column with lowercase and x0 less than 'Mr.'
+            if x0_first_column_mr and 'entity:' not in line and all(word['x0'] < min(x0_first_column_mr) for word in page_data):
+                current_person.append('entity:' + line)
+            elif x0_second_column_mr and 'entity:' not in line and all(word['x0'] < min(x0_second_column_mr) for word in page_data):
+                current_person.append('entity:' + line)
             else:
-                del grouped_output[index]
+                current_person.append(line)
 
-    return grouped_output
+def separate_entity_lines(persons_data):
+    new_persons_data = []
+    for person in persons_data:
+        per_data = []
+        for line in person:
+            if line.startswith('entity:'):
+                new_persons_data.append([line])
+                del line
+            else:
+                per_data.append(line)
 
-grouped_output = remove_text_patterns(grouped_output)
+        new_persons_data.append(per_data)
 
-# out_list = []
-# for d in grouped_output:
-#     if d[0] and '(continued)' not in d[0] and 'Page' not in d[0] and '*' not in d[0]:
-#         in_list = []
-#         for each_inner_item in d:
-#             if '' == each_inner_item:
-#                 out_list.append(in_list)
-#                 in_list = []
-#             else:
-#                 in_list.append(each_inner_item)
-#
-#         out_list.append(in_list)
-#
-# out_list1 = []
-# for input_list in out_list:
-#     entity_list = []
-#     non_entity_list = []
-#     current_entity = []
-#
-#     for item in input_list:
-#         if item.startswith('Entity:'):
-#             if item != 'Entity:':
-#                 current_entity.append(item)
+    return new_persons_data
+
+persons_data = separate_entity_lines(persons_data)
+persons_data = [dt for dt in persons_data if dt]
+
+def clean_list(main_data_list):
+    """
+    Remove list items that are either all numbers or contain numbers but no alphabets.
+    """
+    cleaned_list = []
+    for data_list in main_data_list:
+        items = []
+        for item in data_list:
+            # Check if the item is not all digits and contains at least one alphabet character
+            if not item.replace(' ', '').isdigit() and any(char.isalpha() for char in item):
+                items.append(item)
+
+        cleaned_list.append(items)
+    return cleaned_list
+
+# Test the function with the provided example
+persons_data = clean_list(persons_data)
+
+# Print the individual persons' details with 'entity:' lines separated
+# for person in persons_data:
+#     for item in person:
+#         if isinstance(item, list):
+#             print(item)
 #         else:
-#             if current_entity:
-#                 entity_list.append('Entity:' + ' '.join(current_entity).replace('Entity:', ''))
-#                 current_entity = []
-#             non_entity_list.append(item)
-#
-#     # Append the last entity group if it ends with 'Entity:'
-#     if current_entity:
-#         entity_list.append('Entity:' + ' '.join(current_entity).replace('Entity:', ''))
-#
-#     out_list1.append(entity_list)
-#     out_list1.append(non_entity_list)
-#
-# for kk in out_list1:
-#     if kk:
-#         print(kk)
-
-
-
-for d in grouped_output:
-    if d[0] and '(continued)' not in d[0] and d[0]!='Entity:':
-            # and 'Page' not in d[0]\
-            # and '*' not in d[0]\
-
-        print(d)
+#             print(item)
+#     print('\n')
+for kd in persons_data:
+    print(kd)

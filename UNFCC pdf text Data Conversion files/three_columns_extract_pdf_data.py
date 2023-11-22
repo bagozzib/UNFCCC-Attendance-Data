@@ -1,6 +1,6 @@
 import pdfplumber
 import re
-from inputs_file import pdf_path
+from inputs_file import pdf_path, title_match_pattern
 
 def should_add_bold_prefix(text):
     """ Some lines should not be prefixed with 'Entity:' keyword even though, they are in bold letters """
@@ -56,7 +56,7 @@ def extract_with_bold_annotations(pdf_path):
                         current_group.append(current_line.strip())
                         current_line = ""
                     # Check for a larger than usual gap between lines
-                    if ch["top"] - last_y > 2 * last_char_height:
+                    if ch["top"] - last_y > 1.3 * last_char_height:
                         if current_group:
                             nested_lines_with_bold.append(current_group)
                             current_group = []
@@ -64,7 +64,7 @@ def extract_with_bold_annotations(pdf_path):
                 # print('-'*30)
                 # Check if text should be prefixed with bold
 
-                if "HCKPBK" not in ch["fontname"] and not current_line.startswith("Entity:") and should_add_bold_prefix(ch["text"]):
+                if "Bold" in ch["fontname"] and not current_line.startswith("Entity:") and should_add_bold_prefix(ch["text"]):
                     current_line += "Entity:"
 
                 current_line += ch["text"]
@@ -122,8 +122,9 @@ def clean_list(lst):
     return cleaned if cleaned else None
 
 # This contains the list of pdf extracted data.
-grouped_output = extract_with_bold_annotations(pdf_path)
-# grouped_output = extract_with_bold_annotations("C://Users//rakes//Downloads//2008_COP_14_Poznan_Part_2-3-4.pdf")
+# grouped_output = extract_with_bold_annotations(pdf_path)
+grouped_output = extract_with_bold_annotations("C:\\Users\\rakes\\Music\\pdfconverted image files\\2001_COP_7_Marrakesh.pdf")
+# grouped_output = extract_with_bold_annotations("C://Users//rakes//Downloads//2022_COP_27_Sharm el-Sheikh_Part_1-151-300.pdf")
 
 def remove_text_patterns(grouped_output):
     # *******************************************
@@ -189,6 +190,24 @@ grouped_output = remove_text_patterns(grouped_output)
 #         print(kk)
 
 
+not_correct_names = []
+numbers_doubt = []
+for idx, d in enumerate(grouped_output):
+    if d[0] and '(continued)' not in d[0] and d[0]!='Entity:':
+            # and 'Page' not in d[0]\
+            # and '*' not in d[0]\
+        pattern = r'Entity:\d+$'
+        matches = re.findall(pattern, d[0])
+
+        if len(d) == 1 and matches:
+            numbers_doubt.append(d)
+            continue
+
+        title_match = title_match_pattern.search(d[0])
+        if not title_match and 'Entity:' not in d[0]:
+            grouped_output[idx-1].extend(d)
+            not_correct_names.append(['d', d, grouped_output[idx-1]])
+            grouped_output.pop(idx)
 
 for d in grouped_output:
     if d[0] and '(continued)' not in d[0] and d[0]!='Entity:':
@@ -196,3 +215,9 @@ for d in grouped_output:
             # and '*' not in d[0]\
 
         print(d)
+
+print('\n'*10)
+print('*'*20)
+print(not_correct_names)
+print('*'*20)
+
