@@ -123,6 +123,7 @@ def clean_list(lst):
 
 # This contains the list of pdf extracted data.
 # grouped_output = extract_with_bold_annotations(pdf_path)
+# grouped_output = extract_with_bold_annotations("C:\\Users\\rakes\\Music\\pdfconverted image files\\2001_COP_7_Marrakesh.pdf")
 grouped_output = extract_with_bold_annotations("C:\\Users\\rakes\\Music\\pdfconverted image files\\2001_COP_7_Marrakesh.pdf")
 # grouped_output = extract_with_bold_annotations("C://Users//rakes//Downloads//2022_COP_27_Sharm el-Sheikh_Part_1-151-300.pdf")
 

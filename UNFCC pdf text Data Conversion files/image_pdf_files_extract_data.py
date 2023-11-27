@@ -48,16 +48,16 @@ def process_column_words(column_words, column_data, x0_first_column_mr, x0_secon
     # Add 'entity:' prefix to text in the same column with lowercase and x0 less than 'Mr.'
     if x0_first_column_mr and x0_first_column_mr[0] > x0_threshold:
         for i, line in enumerate(column_data):
-            if line.isupper() and all(word['x0'] < x0_first_column_mr[0] for word in column_words):
+            if line.isupper() and all(word['x0'] < x0_first_column_mr[0]+280 for word in column_words):
                 column_data[i] = 'entity:' + line
 
     if x0_second_column_mr and x0_second_column_mr[0] > x0_threshold:
         for i, line in enumerate(column_data):
-            if line.isupper() and all(word['x0'] < x0_second_column_mr[0] for word in column_words):
+            if line.isupper() and all(word['x0'] < x0_second_column_mr[0]+280 for word in column_words):
                 column_data[i] = 'entity:' + line
 
-file_path = "C:\\Users\\rakes\\Music\\pdfconverted image files\\1997_COP_3_Kyoto.pdf"
-all_pages_data = extract_page_wise_column_data(file_path, 300)
+file_path = "C:\\Users\\rakes\\Music\\pdfconverted image files\\1995_COP_1_Berlin.pdf"
+all_pages_data = extract_page_wise_column_data(file_path, 275)
 
 # Extracting individual persons' details using the title pattern
 persons_data = []
@@ -71,9 +71,9 @@ for page_data in all_pages_data:
         try:
             if 'Mr.' in line:
                 if x0_first_column_mr is None:
-                    x0_first_column_mr = [word['x0'] for word in page_data if word['text'] == 'Mr.' and word['x0'] <= 300]
+                    x0_first_column_mr = [word['x0'] for word in page_data if word['text'] == 'Mr.' and word['x0'] <= 275]
                 elif x0_second_column_mr is None:
-                    x0_second_column_mr = [word['x0'] for word in page_data if word['text'] == 'Mr.' and word['x0'] > 300]
+                    x0_second_column_mr = [word['x0'] for word in page_data if word['text'] == 'Mr.' and word['x0'] > 275]
         except:
             pass
 
@@ -96,14 +96,24 @@ def separate_entity_lines(persons_data):
     new_persons_data = []
     for person in persons_data:
         per_data = []
+        entity_lines = []  # List to store consecutive entity lines
         for line in person:
             if line.startswith('entity:'):
-                new_persons_data.append([line])
-                del line
+                entity_lines.append(line[7:])  # Add line to entity_lines, removing the 'entity:' prefix
             else:
+                if entity_lines:
+                    # Join all entity lines and add as a single entry, then reset entity_lines
+                    new_persons_data.append('entity:' + ' '.join(entity_lines))
+                    entity_lines = []
                 per_data.append(line)
 
-        new_persons_data.append(per_data)
+        # Add non-entity lines
+        if per_data:
+            new_persons_data.append(per_data)
+
+        # Handle any remaining entity lines after the loop
+        if entity_lines:
+            new_persons_data.append(['entity:' + ' '.join(entity_lines)])
 
     return new_persons_data
 
@@ -126,7 +136,7 @@ def clean_list(main_data_list):
     return cleaned_list
 
 # Test the function with the provided example
-persons_data = clean_list(persons_data)
+# persons_data = clean_list(persons_data)
 
 # Print the individual persons' details with 'entity:' lines separated
 # for person in persons_data:
@@ -136,5 +146,41 @@ persons_data = clean_list(persons_data)
 #         else:
 #             print(item)
 #     print('\n')
+
+def filter_strings(persons_data):
+    """
+    Filter out strings from nested lists based on specified criteria,
+    while retaining the nested list structure.
+
+    :param persons_data: List of strings and nested lists of strings to filter.
+    :return: Filtered list with the same structure as persons_data.
+    """
+    filtered_data = []
+    for item in persons_data:
+        if isinstance(item, list):  # Check if the item is a list
+            filtered_sublist = [s for s in item if not is_excluded(s)]
+            if filtered_sublist:  # Add the sublist only if it's not empty
+                filtered_data.append(filtered_sublist)
+        elif isinstance(item, str):  # Check if the item is a string
+            if not is_excluded(item):
+                filtered_data.append(item)
+
+    return filtered_data
+
+def is_excluded(string):
+    """
+    Determine if the string should be excluded based on the specified criteria.
+
+    :param string: The string to check.
+    :return: True if the string should be excluded, False otherwise.
+    """
+    lower_string = string.lower()
+    return (any(c.isdigit() for c in lower_string) or
+            'email' in lower_string or 'T:' in lower_string or
+            'P.O.' in lower_string or 'F:' in lower_string)
+
+# persons_data = [['Mr. Stephan SINGER', '‘WWF - Germany', 'Hellderichstr. 115', 'D-60591 Frankfurt Germany', 'Email:'], 'entity:T: (31-3404)3-7326 F: (31-3404)1-2064', ['Mr. Meindert BROUWER', 'Postbus 7', 'NL-3700 AA Zeist Netherlands', 'Email:'], 'entity:T: (41-22)364-9111 F: (41-22)364-4238', ['Mr. Andrew KERR', 'Avenue du Mont-Blanc', 'CH-1196 Gland Switzerland', 'Email: wwfgland@gn.apc.org'], 'entity:T: (41-22)364-9111 F: (41-22)364-4238', ['Mr. Sacha FRIEDLI', 'Avenue du Mont-Blanc', 'CH-1196 Gland Switzerland', 'Email: wwfgland@gn.apc.org'], ['entity:WUPPERTAL INSTITUT FOR CLIMATE, ENVIRONMENT AND ENERGY'], 'entity:T: (49-202)249-2135 (49-202)2-4920 F: (49-', ['Mr. Reinhard LOSKE', 'Doppersberg 19', 'Postfach 10 04 80', 'D-42103 Wuppertal Germany', '202)249-2108', 'Email:']]
+persons_data = filter_strings(persons_data)
+# print(persons_data)
 for kd in persons_data:
     print(kd)

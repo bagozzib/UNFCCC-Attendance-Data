@@ -29,6 +29,7 @@ from flair.data import Sentence
 # Load stop words
 stop_words = set(stopwords.words('english'))
 failed_minister_gvrnmt_split_list = []
+job_title_ext_split_list_names = []
 # Load the English NLP model
 nlp = spacy.load("en_core_web_lg")
 matcher = Matcher(nlp.vocab)
@@ -130,6 +131,7 @@ def join_based_on_stopwords(data):
                     next_str_first_word.lower() in stop_words or
                     # next_str_first_word[0].islower() or   # this makes to generate false positives
                     any(current_str_last_word.lower().endswith(pattern) for pattern in end_patterns) or
+                    any(next_str_first_word.lower().startswith(pattern) for pattern in other_lang_start_stop_words_set) or
                     current_str_last_word.lower() in exact_match_words or
                     current_str_last_word.lower() in other_lang_start_stop_words_set or
                     next_str_first_word.lower() in other_lang_start_stop_words_set or
@@ -539,15 +541,115 @@ class SegregateData(object):
         return division, affiliation
 
 
-    def empty_job_division_join_affiliation_name(self, name, affiliation):
+    def empty_job_division_join_affiliation_name(self, name, doubt, affiliation):
         affiliation = affiliation.strip()
         affiliation_words_len = len(affiliation.split(' '))
 
         if affiliation_words_len == 1 and self.check_affiliation(affiliation) != 'true':
-            name += ' ' + affiliation
+            if self.check_person(affiliation):
+                name += ' ' + affiliation
+            else:
+                doubt += affiliation
+
             affiliation = ''
 
-        return name, affiliation
+        return name, doubt, affiliation
+
+    def set_strict_division_words(self, job_title, division, affiliation):
+        if division and job_title:
+            job_title_split_res = job_title.split('Presidency of')
+            if len(job_title_split_res) > 1:
+                job_title = job_title_split_res[0]
+                division = 'Presidency of' + ' '.join(job_title_split_res[1:])
+
+        if not division and affiliation:
+            if affiliation.strip().lower() in strict_division_keywords:
+                division = affiliation
+                affiliation = ''
+
+        return job_title, division, affiliation
+
+    def is_name_split_abruptly(self, name):
+        if (name.split()[-1][-1].lower() in names_end_join_set) or (name.split()[-1].lower() in names_end_join_set) or len(name.split()) == 1:
+            return True
+
+        return False
+
+    def join_split_names(self, name, doubt, job_title, division, affiliation):
+        # handle name split with some characters at the end.
+        name = name.strip()
+        if self.is_name_split_abruptly(name):
+            rem_text = ''
+            if doubt.strip():
+                rem_text = doubt
+                doubt = ''
+            elif job_title.strip():
+                rem_text = job_title
+                job_title = ''
+            elif division.strip():
+                rem_text = division
+                division = ''
+            elif affiliation.strip():
+                rem_text = affiliation
+                affiliation = ''
+
+            name += ' ' + rem_text
+
+        return name, doubt, job_title, division, affiliation
+
+    def is_doubt_col_split_abruptly(self, doubt):
+        if doubt.split()[0].lower() in names_end_join_set or set(doubt.split()).intersection(doubt_cols_abrupt_split_set):
+            return True
+
+        return False
+
+    def join_split_doubt_col(self, name, doubt, job_title):
+        if doubt.strip() and self.is_doubt_col_split_abruptly(doubt):
+            name = 'color:blue_name' + name + ' ' + doubt
+            doubt = ''
+
+        if doubt.strip() and job_title and job_title.split()[0].lower() in doubt_merge_job_title_set:
+            job_title = 'color:blue_job' + doubt + ' ' + job_title
+            doubt = ''
+
+        return name, doubt, job_title
+
+    def join_us_keyword(self, data_list):
+        for item in range(len(data_list)-1):
+            if len(data_list[item].lower().split('u.s.')) > 1 and data_list[item + 1].split():
+                data_list[item + 1] = 'U.S.' + ' ' + data_list[item + 1]
+                data_list[item] = ' '.join(data_list[item].split()[:-1])
+
+        return data_list
+
+    def job_title_affiliation_shift(self, name, job_title, division, affiliation):
+        job_title_dup = job_title
+        job_title_list = list(set(job_title.lower().split()).intersection(job_title_new_checklist_words_set))
+
+        if job_title_list and job_title_list[0].split():
+            if job_title.lower().split(job_title_list[0]):
+                check_after_job_title_match = job_title.lower().split(job_title_list[0])[1]
+                if check_after_job_title_match.split():
+                    check_after_job_title_match = job_title.lower().split(job_title_list[0])[1].split()[0]
+                    after_job_title_match = list(set(check_after_job_title_match).intersection(job_title_negation_set))
+
+                    if after_job_title_match and after_job_title_match[0].split():
+                        job_title_ext_text = ' '.join(job_title.split(after_job_title_match[0])[1:]).strip()
+                        job_title = job_title.split(after_job_title_match[0])[0]
+
+                        if not division and affiliation:
+                            division = job_title_ext_text
+                        elif division and affiliation:
+                            division = job_title_ext_text + ' ' + job_title
+                        elif not division and not affiliation:
+                            affiliation = job_title_ext_text
+                        elif division and not affiliation:
+                            division, affiliation = job_title_ext_text, division
+
+                        if job_title_dup != job_title:
+                            job_title_ext_split_list_names.append(name)
+
+        return job_title, division, affiliation
 
     def join_split_job_titles(self):
         """ if the job title is split across lines, joining them """
@@ -689,7 +791,7 @@ class SegregateData(object):
                     division = ''
 
         if len(job_title) >= self.min_previous_str_len_merge_single_wrd and len(affiliation_words_list) == 1:
-            if not (affiliation.isupper()):
+            if not (affiliation.isupper()) and not division:
                 job_title += ' ' + affiliation
                 affiliation, affiliation_words_list = '', []
 
@@ -796,12 +898,13 @@ class SegregateData(object):
                         classify_text in affiliation.lower() or classify_text in en_trans_affiliation.lower()):
 
                     words_list = self.split_text_by_keyword(affiliation, classify_text)
-                    division += ' ' + words_list[0]
+                    if len(words_list) > 1:
+                        division += ' ' + words_list[0]
 
-                    if len(words_list) >= 2:
-                        affiliation = words_list[1]
-                    else:
-                        affiliation = ''
+                        if len(words_list) >= 2:
+                            affiliation = words_list[1]
+                        else:
+                            affiliation = ''
 
                 elif (classify_text in extras.lower() or classify_text in en_trans_extras.lower()):
                     if en_trans_extras.lower().startswith(classify_text):
@@ -895,6 +998,14 @@ class SegregateData(object):
 
         return input_list
 
+    def contains_enclosed_words(self, input_list):
+        for idx in range(1, len(input_list)):
+            if input_list[idx] and input_list[idx].strip()[0] in special_chars_set and input_list[idx].strip()[-1] in special_chars_set:
+                input_list[idx-1] += ' ' + input_list[idx]
+                input_list[idx] = ''
+
+        return input_list
+
     def set_strict_affiliation_words(self, data_cols_list):
 
         for idx, each_str_item in enumerate(data_cols_list):
@@ -918,6 +1029,10 @@ class SegregateData(object):
                     data_cols_list[idx - 1] += ' ' + result[0]
                     data_cols_list[-1] = ' '.join(result[1:])
 
+            elif len(result) == 1 and result[0].lower() in strict_affiliation_keywords and idx != len(data_cols_list)-1:
+                data_cols_list[-1] = data_cols_list[idx] + ' ' + data_cols_list[-1]
+                data_cols_list[idx] = ''
+
         return data_cols_list
 
     def job_title_handle_the_keyword_correctly(self, job_title, division, affiliation):
@@ -925,7 +1040,7 @@ class SegregateData(object):
         split_txt = None
 
         # if job_title contains only one word 'The'
-        if job_title and job_title.split(split_txt)[0] == 'The':
+        if job_title and job_title == 'The':
             job_title = ''
             if division:
                 division = 'The ' + division
@@ -1321,13 +1436,13 @@ class SegregateData(object):
                                                                                                   en_trans_extras)
 
             job_title, division, affiliation, extras = self.classify_data_final_stage(job_title, division, affiliation, extras)
-
             en_trans_job_title = self.translate_text(job_title)
             job_title, division = self.correct_job_keywords_for_job_title(name, job_title, en_trans_job_title, division)
 
             # job_title, division = join_based_on_stopwords([job_title, division])
 
             data_cols_list = [doubt, job_title, division, affiliation]
+            data_cols_list = [item.strip() for item in data_cols_list]
 
             doubt, job_title, division, affiliation = self.join_split_data_across_cols(data_cols_list, special_chars_set)
 
@@ -1345,12 +1460,25 @@ class SegregateData(object):
 
             job_title, division, affiliation = job_title.strip(','), division.strip(','), affiliation.strip(',')
 
-            job_title, division = join_based_on_stopwords([job_title, division])
-
             division, affiliation = self.empty_division_store_affiliation(division, affiliation)
 
-            if not (job_title and division and doubt):
-                name, affiliation = self.empty_job_division_join_affiliation_name(name, affiliation)
+            if not (job_title or division or doubt):
+                name, doubt, affiliation = self.empty_job_division_join_affiliation_name(name, doubt, affiliation)
+
+            # if the division is blank and the division text is misclassified as job_title or Affiliation
+            job_title, division, affiliation = self.set_strict_division_words(job_title, division, affiliation)
+
+            name, doubt, job_title, division, affiliation = self.contains_enclosed_words([name, doubt, job_title, division, affiliation])
+
+            name, doubt, job_title, division, affiliation = self.join_split_names(name, doubt, job_title, division, affiliation)
+            name, doubt, job_title = self.join_split_doubt_col(name, doubt, job_title)
+
+            job_title, division, affiliation = self.join_us_keyword([job_title, division, affiliation])
+            # these boh has to be the last
+            job_title, division = join_based_on_stopwords([job_title, division])
+            division, affiliation = join_based_on_stopwords([division, affiliation])
+
+            # job_title, division, affiliation = self.job_title_affiliation_shift(name, job_title, division, affiliation)
 
             # extras field is mostly containing Affiliation data, so combining it with Affiliation
             if extras:
@@ -1420,6 +1548,11 @@ def save_data_to_excel_file(output):
     # Define a format with red text color
     # this marks the red color cells
     red_text_format = workbook.add_format({'color': 'red'})
+    blue_text_format = workbook.add_format({'color': 'blue'})
+
+    for row_num, value in enumerate(df['Name'], start=2):
+        if 'color:blue_name' in value:
+            worksheet.write(f'D{row_num}', value, blue_text_format)
 
     for row_num, value in enumerate(df['Affiliation'], start=2):
         if 'color:red_affiliation' in value:
@@ -1428,6 +1561,9 @@ def save_data_to_excel_file(output):
     for row_num, value in enumerate(df['Job Title'], start=2):
         if 'color:red_job' in value:
             worksheet.write(f'G{row_num}', value, red_text_format)
+
+        if 'color:blue_job' in value:
+            worksheet.write(f'G{row_num}', value, blue_text_format)
 
     for row_num, value in enumerate(df['Division'], start=2):
         if 'color:red_division' in value:
@@ -1457,8 +1593,8 @@ def classify_data():
         save_data_to_excel_file(output)
 
     print('failed_minister_gvrnmt_split_list', failed_minister_gvrnmt_split_list)
+    print('job_title_ext_split_list_names', job_title_ext_split_list_names)
 
     return output
-
 
 classify_data()
