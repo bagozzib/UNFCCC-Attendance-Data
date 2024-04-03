@@ -3,6 +3,7 @@ The project is aimed at extracting and categorizing attendee text entries from (
 
 ## Installation
 To install the necessary dependencies, run:
+requirements.txt
 
 ## Usage
 Steps to use the code:
