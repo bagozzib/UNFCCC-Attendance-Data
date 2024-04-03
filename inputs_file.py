@@ -1,9 +1,5 @@
 import re
 
-# Mr. Roman Kharytonov
-# Representative of the non-governmental, it is not adding organization even though it is ending by 'governmental'
-# organization
-
 debug_mode = True
 stop_word_pattern = r'\b(?:of|for)\b'
 
