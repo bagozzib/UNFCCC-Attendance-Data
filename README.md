@@ -1,4 +1,4 @@
-# IEA Attendence, Extract and Classify All the Attendence data from UNFCCC Source files
+# Extract and Classify All the Attendence data from UNFCCC Source files
 The project is aimed at extracting and categorizing attendee text entries from (Pre-)COP (Conference of the Parties) PDF documents into specific variables.
 
 ## Installation
