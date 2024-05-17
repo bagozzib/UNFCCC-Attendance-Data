@@ -32,8 +32,8 @@ Once we have the data in a list or Array format, we will use the classify_data t
 
 
 ## Data
-The project utilizes COP and Pre PDF documents as its primary data source. These documents contain attendee information in various formats, including text and image-based PDFs.
-- Data source: UNFCCC COP and Pre-COP PDF documents
+The project utilizes COP and pre-COP PDF documents as its primary data source. These documents contain attendee information in various formats, including text and image-based PDFs.
+- Data source: UNFCCC COP and pre-COP PDF documents
 - Preprocessing steps: Text extraction, OCR conversion (for image-based PDFs)
 - Data format: PDF
 
