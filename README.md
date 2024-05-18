@@ -37,6 +37,7 @@ The project utilizes COP and pre-COP PDF documents as its primary data source. T
 - Preprocessing steps: Text extraction, OCR conversion (for image-based PDFs)
 - Data format: PDF
 
+
 ## Code Structure
 - extract_pdf_data: This script handles the extraction of data from PDF files with three columns and two columns.
 - single_column_extract_text_data: This script manages the extraction of data from PDF files with a single column.
@@ -44,7 +45,6 @@ The project utilizes COP and pre-COP PDF documents as its primary data source. T
 - inputs_file: This file contains input lists, file paths, data dictionaries, and all necessary inputs for the functions in other files.
 - post_processing_of_tesseract_file: This script contains code for preprocessing the data before classifying the data extracted from image files.
 - classify_data: This script classifies the input list of codes into the required output variables and generates an output Excel file.
-
 
 
 ## Results
@@ -57,5 +57,14 @@ The project successfully extracted and categorized 310,202 attendee entries from
 - Division
 - Affiliation
 
+It then added the following additional variables.
+-Virtual: A binary variable that distinguishes between physical and virtual participation, where 0 denotes physical (that is, in-person) attendance and 1 indicates virtual attendance.
+-Year: For a given attendee, the year in which the COP meeting that they attended occurred, as extracted directly from the file name of the original (pre-)-COP document.
+-Meeting: A concatenation of "COP" or "pre-COP" with the meeting's relevant number (e.g., "COP 27"). This variable accordingly provides a unique identifier for the (pre-)COP that a given attendee record corresponded to.
+-Location: This string variable indicates the geographic location the (pre-)COP session that an attendee attended. It has been standardized and corrected for typographical and OCR errors.
+-Female: A binary variable that distinguishes between female, male, and other attendees, where 0 denotes a non-female attendee, 1 indicates a female attendee, and NA denotes an attendee that we could not assign to either the male or female designation based upon their provided honorific or absence thereof.
+-Group affiliations: Separate indicator variables for IGO (Intergovernmental Organizations), NGO (Non-Governmental Organizations), Observer, Party, and IO (related to "United Nations Secretariat units and bodies" and "Specialized agencies and related organizations"). These binary variables classify participants into categories reflecting the organizational affiliations and roles of their delegations at each (pre-)COP. 
+
+
 ## Conclusion
-In conclusion, the project effectively addressed the challenges associated with extracting and categorizing attendee information from COP PDF documents. By leveraging a combination of OCR technology, NLP packages, Heuristics, and manual verification processes, the project achieved accurate classification of attendee details into predefined categories.
+In conclusion, the project effectively addressed the challenges associated with extracting and categorizing attendee information from (pre-)COP PDF documents. By leveraging a combination of OCR technology, NLP packages, Heuristics, and manual verification processes, the project achieved accurate classification of attendee details into predefined categories.
