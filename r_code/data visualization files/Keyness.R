@@ -29,7 +29,7 @@ setwd(".../applications/")
 ################################################################
 
 #read in cleaned data
-complete.data<-read.csv("cops.cleaned.translated.csv",header=TRUE, row.names=NULL)
+complete.data<-read.csv("cops.cleaned.translated.csv",header=TRUE, row.names=NULL,encoding="latin1")
 
 #subset to only male/female respondents and to only COPs taking place in 2021 or later
 complete.data<-subset(complete.data,!is.na(complete.data$Female))
