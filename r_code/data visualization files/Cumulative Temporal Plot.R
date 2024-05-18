@@ -30,8 +30,8 @@ setwd(".../applications/")
 ################################################################
 
 #read in cleaned data
-cops.data<-read.csv("cops.cleaned.csv",header=TRUE, row.names=NULL)
-precops.data<-read.csv("precops.cleaned.csv",header=TRUE, row.names=NULL)
+cops.data<-read.csv("cops.cleaned.csv",header=TRUE, row.names=NULL,encoding="latin1")
+precops.data<-read.csv("precops.cleaned.csv",header=TRUE, row.names=NULL,encoding="latin1")
 
 #combine
 complete.data<-rbind(cops.data,precops.data)
@@ -114,8 +114,8 @@ text(1,10500, "IGO Attendees",cex=.85,pos=4,col="#FDC086")
 #############################################
 
 #read in cleaned data
-cops.data<-read.csv("cops.cleaned.csv",header=TRUE, row.names=NULL)
-precops.data<-read.csv("precops.cleaned.csv",header=TRUE, row.names=NULL)
+cops.data<-read.csv("cops.cleaned.csv",header=TRUE, row.names=NULL,encoding="latin1")
+precops.data<-read.csv("precops.cleaned.csv",header=TRUE, row.names=NULL,encoding="latin1")
 
 #combine
 complete.data<-rbind(cops.data,precops.data)
