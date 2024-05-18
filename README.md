@@ -57,7 +57,7 @@ The project successfully extracted and categorized 310,202 attendee entries from
 - Division
 - Affiliation
 
-It then added the following additional variables.
+It then added the following additional variables using the following two R scripts: FinalDataCleaning_COP.R and FinalDataCleaning_PreCOP.R.
 - Virtual: A binary variable that distinguishes between physical and virtual participation, where 0 denotes physical (that is, in-person) attendance and 1 indicates virtual attendance.
 - Year: For a given attendee, the year in which the COP meeting that they attended occurred, as extracted directly from the file name of the original (pre-)-COP document.
 -Meeting: A concatenation of "COP" or "pre-COP" with the meeting's relevant number (e.g., "COP 27"). This variable accordingly provides a unique identifier for the (pre-)COP that a given attendee record corresponded to.
