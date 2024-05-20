@@ -4,7 +4,7 @@
 - [Description](#description)
 - [Installation](#installation)
 - [Usage](#usage)
-- [File Structure](#file-structure)
+- [File Structure](#folder-structure)
 - [Contributors](#contributors)
 - [License](#license)
 
@@ -29,15 +29,12 @@ To set up the project environment, follow these steps:
 ## Usage:
    For detailed usage instructions, please refer to the project [Wiki](https://github.com/bagozzib/UNFCCC-Attendance-Data/wiki).
 
- ## File Structure:
-   - **master_data: Contains the original PDF files and extracted text files.
-   - **python_files: Scripts for extracting text from PDFs.
-   - **extract_attendee_data.py: Main script for data extraction.
-   - **r_code: R scripts for data visualization and analysis.
-   - **analyze_attendee_data.R: Main script for data analysis.
-   - **README.md**: Project overview and setup instructions.
-   - **requirements.txt**: List of Python dependencies.
-
+ ## Folder Structure:
+   - **master_data**: This directory holds the definitive CSV files, both with and without translated data.
+   - **python_files**: These scripts are designed for PDF text extraction and classification, facilitating the generation of CSV files.
+   - **extract_attendee_data.py**: The primary script responsible for extracting data.
+   - **r_code**: Within this directory are R scripts tailored for tasks such as data cleansing, validation, visualization, and analysis.
+   - **requirements.txt**: This file enumerates the Python dependencies necessary for the project.
  ## Contributors:
    - Benjamin E. Bagozzi (Corresponding author: bagozzib@udel.edu)
    - Daria Blinova
