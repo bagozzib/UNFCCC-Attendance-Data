@@ -1,70 +1,51 @@
-# Extract and Classify All the Attendence data from UNFCCC (pre-)COP Source files
-The project is aimed at extracting and categorizing attendee text entries from (Pre-)COP (Conference of the Parties) PDF documents into specific variables.
+# UNFCCC Attendee Data Extraction and Analysis
 
-## Installation
-To install the necessary dependencies, run:
-requirements.txt
-
-## Usage
-Steps to use the code:
-1. Extract the data from the Text or Image PDF files using the given project files except classify_data.py
-2. After extracting the pdf data using step1, we will have a list or of data, we will input that data to the classify_data.py file, to classify the data.
-
-below are the detailed steps:
-select the uploaded project files, based on the PDF type(image/text) and column format, the output of the files will be a list or array of data.
- 
-- Steps for Text PDF Single Column Text PDF Extraction:
-Uncomment the method ExtractOneColumnPdfData(pdf_path).run() to extract data from single-column text PDF files.
-
-- Double or Triple Column Text PDF Extraction:
-Uncomment the method for extracting data from double or triple-column text PDF files. Adjust the observed_pdf_line_width parameter based on the gap between each person's details.
-
-- Single Column Image PDF Extraction:
-Use the SingleColumnImagePDFTextExtraction(pdf_path).run() method to extract data from single-column image PDF files.
-
-- Manual Correction:
-After running the extraction scripts, manually verify the extracted data for entity names. If corrections are needed, update the data in the manually_corrected_ip_data list in the specified format.
-
-- Image Single Column Correction:
-Run the ImageSingleColumnCorrectExtractedContents(manually_corrected_ip_data, title_match_pattern).run() method to correct extracted contents from single-column image PDF files.
-
-Once we have the data in a list or Array format, we will use the classify_data to segreagte the data to these Group Type, Delegation, Honorific, Person Name, Job Title, Division, Affiliation columns and generate an excel file.
+## Table of Contents
+- [Description](#description)
+- [Installation](#installation)
+- [Usage](#usage)
+- [File Structure](#file-structure)
+- [Contributors](#contributors)
+- [License](#license)
 
 
-## Data
-The project utilizes COP and pre-COP PDF documents as its primary data source. These documents contain attendee information in various formats, including text and image-based PDFs.
-- Data source: UNFCCC COP and pre-COP PDF documents
-- Preprocessing steps: Text extraction, OCR conversion (for image-based PDFs)
-- Data format: PDF
+## Description:
+This project involves extracting, classifying and analyzing attendee data from the United Nations Framework Convention on Climate Change (UNFCCC) meetings, covering over 30 years of international climate change negotiations. The data includes detailed information about individuals attending these meetings, such as Group Type, Delegation, Honorific, Person Name, Job Title, Division, and Affiliation.
 
 
-## Code Structure
-- extract_pdf_data: This script handles the extraction of data from PDF files with three columns and two columns.
-- single_column_extract_text_data: This script manages the extraction of data from PDF files with a single column.
-- image_pdf_extract_pdf_data: This script is responsible for extracting data from PDF files containing images.
-- inputs_file: This file contains input lists, file paths, data dictionaries, and all necessary inputs for the functions in other files.
-- post_processing_of_tesseract_file: This script contains code for preprocessing the data before classifying the data extracted from image files.
-- classify_data: This script classifies the input list of codes into the required output variables and generates an output Excel file.
+## Installation:
+To set up the project environment, follow these steps:
+
+1. **Clone the repository:**
+   ```
+   git clone https://github.com/bagozzib/UNFCCC-Attendance-Data.git
+   ```
+   
+2. **Install the required packages:**
+   ```
+   pip install -r requirements.txt
+   ```
+
+## Usage:
+   For detailed usage instructions, please refer to the project [Wiki](https://github.com/bagozzib/UNFCCC-Attendance-Data/wiki).
+
+ ## File Structure:
+   - **master_data: Contains the original PDF files and extracted text files.
+   - **python_files: Scripts for extracting text from PDFs.
+   - **extract_attendee_data.py: Main script for data extraction.
+   - **r_code: R scripts for data visualization and analysis.
+   - **analyze_attendee_data.R: Main script for data analysis.
+   - **README.md**: Project overview and setup instructions.
+   - **requirements.txt**: List of Python dependencies.
+
+ ## Contributors:
+   - Benjamin E. Bagozzi (Corresponding author: bagozzib@udel.edu)
+   - Daria Blinova
+   - Rakesh Emuru
+     
+## License:
+   - we will mention our license here, when we are making this publicly Available.
 
 
-## Results
-The project successfully extracted and categorized 310,202 attendee entries from 43 COP and 12 pre-COP PDFs.
-- Group Type
-- Delegation
-- Honorific
-- Person Name
-- Job Title
-- Division
-- Affiliation
 
-It then added the following additional variables using the following two R scripts: FinalDataCleaning_COP.R and FinalDataCleaning_PreCOP.R.
-- Virtual: A binary variable that distinguishes between physical and virtual participation, where 0 denotes physical (that is, in-person) attendance and 1 indicates virtual attendance.
-- Year: For a given attendee, the year in which the COP meeting that they attended occurred, as extracted directly from the file name of the original (pre-)-COP document.
--Meeting: A concatenation of "COP" or "pre-COP" with the meeting's relevant number (e.g., "COP 27"). This variable accordingly provides a unique identifier for the (pre-)COP that a given attendee record corresponded to.
-- Location: This string variable indicates the geographic location the (pre-)COP session that an attendee attended. It has been standardized and corrected for typographical and OCR errors.
-- Female: A binary variable that distinguishes between female, male, and other attendees, where 0 denotes a non-female attendee, 1 indicates a female attendee, and NA denotes an attendee that we could not assign to either the male or female designation based upon their provided honorific or absence thereof.
-- Group affiliations: Separate indicator variables for IGO (Intergovernmental Organizations), NGO (Non-Governmental Organizations), Observer, Party, and IO (related to "United Nations Secretariat units and bodies" and "Specialized agencies and related organizations"). These binary variables classify participants into categories reflecting the organizational affiliations and roles of their delegations at each (pre-)COP. 
-
-
-## Conclusion
-In conclusion, the project effectively addressed the challenges associated with extracting and categorizing attendee information from (pre-)COP PDF documents. By leveraging a combination of OCR technology, NLP packages, Heuristics, and manual verification processes, the project achieved accurate classification of attendee details into predefined categories.
+   
