@@ -10,7 +10,7 @@
 
 
 ## Description:
-This project involves extracting, classifying and analyzing attendee data from the United Nations Framework Convention on Climate Change (UNFCCC) meetings, covering over 30 years of international climate change negotiations. The data includes detailed information about individuals attending these meetings, such as **Group Type, Delegation, Honorific, Person Name, Job Title, Division, and Affiliation.**
+This project involves extracting, classifying and analyzing attendee data from the United Nations Framework Convention on Climate Change (UNFCCC) meetings (and the meetings leading up to the formation of the UNFCCC), covering over 30 years of international climate change negotiations. The data includes detailed information about individuals attending these meetings, such as **Group Type, Delegation, Honorific, Person Name, Job Title, Division, and Affiliation.**
 
 
 ## Installation:
