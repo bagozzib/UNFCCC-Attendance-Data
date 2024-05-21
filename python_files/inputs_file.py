@@ -1222,7 +1222,7 @@ empty_division_affiliation_vals = {'research', 'technology', 'economicandsocialp
                                    'internationalpolicy&negotiations', 'law'}
 
 # the input data extracted from the PDF.
-ip_data = []
+extracted_input_data = []
 
 # there are some lines, we have to split the words, if they contains, the item in the list.
 text_separator_items_set = {'The'}
