@@ -31,17 +31,43 @@ To set up the project environment, follow these steps:
 
  ## Folder Structure:
    - **master_data**: This directory holds the definitive CSV files, both with and without translated data.
+        - Files:
+           -  cops.cleaned.csv
+           -  precops.cleaned.csv
+           -  cops.cleaned.translated.csv
+           -  precops.cleaned.translated.csv
+        
+        - Translated files contains data in Spanish and French languages, translated to English.
+
    - **python_files**: These scripts are designed for PDF text extraction and classification, facilitating the generation of CSV files.
-   - **extract_attendee_data.py**: The primary script responsible for extracting data.
-   - **r_code**: Within this directory are R scripts tailored for tasks such as data cleansing, validation, visualization, and analysis.
+        - Files:
+            - extract_data :  directory, contains code to extract the data from any of 1, 2, 3 columns - text and image pdf files.
+            - classify_data :  directory, contains code to classify the extracted data from extract_data folder.
+            - manual text extracted and classified files :  directory, contains Manually Extracted and classifed pdf, csv files, served as Ground Truth, to calculate Accuracies for our final CSV file.
+            - inputs_file.py : contains the input data dictionaries and other inputs necessary in the extraction and classification code.
+            - post_processing_of_teseract_file.py : clean, and format data extracted from image csv files.
+            - spanish_french_translate_to_english.py : Translate the final CSV files, Spanish and French Text to English.      
+
+   - **r_code**: This directory contains R scripts designed for functions such as data cleaning, validation, visualization, and analysis.
+       - Files:
+           - data validation files: directory, includes files for data validation using Participation statistics to compare the retained information in the final CSV files against the original PDF documents.
+           - data visualization files: directory, contains code for visualizing data from the final CSV files, such as cumulative temporal plots.
+           - FinalDataCleaning_COP.R and FinalDataCleaning_PreCOP.R are scripts used for data cleaning.
+
+     
    - **requirements.txt**: This file enumerates the Python dependencies necessary for the project.
+     
  ## Contributors:
    - Benjamin E. Bagozzi (Corresponding author: bagozzib@udel.edu)
    - Daria Blinova
    - Rakesh Emuru
      
-## License:
-   - we will mention our license here, when we are making this publicly Available.
+## License
+
+#### This project is licensed under the Creative Commons Attribution 4.0 International License (CC-BY-4.0).
+   - This license allows reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator. The license allows for commercial use.
+
+For more details about this license, please visit the [Creative Commons Attribution 4.0 International License webpage](https://creativecommons.org/licenses/by/4.0/).
 
 
 
