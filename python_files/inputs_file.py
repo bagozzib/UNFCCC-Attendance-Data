@@ -1221,7 +1221,24 @@ empty_division_affiliation_vals = {'research', 'technology', 'economicandsocialp
                                    'policy&research', 'forestsandclimate', 'climatechange&energy', 'governmentalaffairs',
                                    'internationalpolicy&negotiations', 'law'}
 
+
 # the input data extracted from the PDF.
+
+"""
+Input Data Format to the classify_data.py file:
+
+[[Group:Parties],
+[Entity:Afghanistan],
+['H.E. Mr. Mostapha Zaher', 'Président de l'Agence nationale pour la', 'Protection de l'environnement'],
+['H.E. Mr. Omar Samad', 'Ambassador', 'Mission diplomatique d'Afghanistan à', 'Ottawa'],
+['Mr. Nahrooddin Neesan', 'Conseiller', 'Mission diplomatique d'Afghanistan à', 'Ottawa'],
+['Mr. Nadiim Qulam Chamrsi', 'Conseiller', 'Mission diplomatique d'Afghanistan à', 'Ottawa'],
+[Entity:Albania],
+['Ms. Enira Fida', 'Manager', 'Climate Change Unit', 'Ministry of Environment'],
+['Ms. Odeta Zheku', 'Information Associate', 'Climate Change Unit', 'Ministry of Environment'],
+['H.E. Mr. Aldhurim Resuli', 'Ambassador of the Republic of Albania to', 'Canada']]
+"""
+
 extracted_input_data = []
 
 # there are some lines, we have to split the words, if they contains, the item in the list.
