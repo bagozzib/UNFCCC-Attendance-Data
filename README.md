@@ -57,7 +57,10 @@ To set up the project environment, follow these steps:
      
    - **requirements.txt**: This file enumerates the Python dependencies necessary for the project.
      
- ## Contributors:
+## Conclusion
+- This project effectively addressed the challenges of extracting and categorizing attendee information from (pre-)COP PDF documents. By leveraging PDF Text Extraction Libraries, OCR technology, NLP packages, heuristics, and manual verification processes, the project achieved accurate classification of attendee details into predefined categories.
+
+## Contributors:
    - Benjamin E. Bagozzi (Corresponding author: bagozzib@udel.edu)
    - Daria Blinova
    - Rakesh Emuru
