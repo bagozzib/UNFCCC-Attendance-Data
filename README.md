@@ -27,7 +27,7 @@ To set up the project environment, follow these steps:
    ```
 
 ## Usage:
-   For detailed usage instructions, please refer to the project [Wiki](https://github.com/bagozzib/UNFCCC-Attendance-Data/wiki).
+   For detailed usage instructions, please refer to the project [UNFCCC Project Code Execution Steps](https://github.com/bagozzib/UNFCCC-Attendance-Data/wiki/UNFCCC-Project-Code--Execution-Steps) WIKI.
 
  ## Folder Structure:
    - **master_data**: This directory holds the definitive CSV files, both with and without translated data.
