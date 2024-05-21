@@ -1723,7 +1723,7 @@ def classify_data():
      the classified data to an excel file """
 
     # join the data based on the stop words
-    processed_data = join_based_on_stopwords(ip_data)
+    processed_data = join_based_on_stopwords(extracted_input_data)
     # get the manual strings form the file
     manual_strs = get_manual_strings(docx_file_path).run()
     # remove the empty lines from the word document file
