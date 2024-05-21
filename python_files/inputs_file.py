@@ -1225,7 +1225,7 @@ empty_division_affiliation_vals = {'research', 'technology', 'economicandsocialp
 # the input data extracted from the PDF.
 
 """
-Input Data Format to the classify_data.py file:
+Input Data Format to the classify_data.py file, to be stored in extracted_input_data is like below:
 
 [[Group:Parties],
 [Entity:Afghanistan],
