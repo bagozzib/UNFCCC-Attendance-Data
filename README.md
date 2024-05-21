@@ -10,7 +10,7 @@
 
 
 ## Description:
-This project involves extracting, classifying and analyzing attendee data from the United Nations Framework Convention on Climate Change (UNFCCC) meetings (and the meetings leading up to the formation of the UNFCCC), covering over 30 years of international climate change negotiations. The data includes detailed information about individuals attending these meetings, such as **Group Type, Delegation, Honorific, Person Name, Job Title, Division, and Affiliation.**
+The code associated with this project extracts, classifies and formats attendee data from the United Nations Framework Convention on Climate Change (UNFCCC) meetings (and the meetings leading up to the formation of the UNFCCC), covering over 30 years of international climate change negotiations. Several final attendee-level datasets are then provided. The datasets include detailed information about individuals attending these meetings, such as **Group Type, Delegation, Honorific, Person Name, Job Title, Division, and Affiliation.**
 
 
 ## Installation:
@@ -30,14 +30,14 @@ To set up the project environment, follow these steps:
    For detailed usage instructions, please refer to the project [UNFCCC Project Code Execution Steps](https://github.com/bagozzib/UNFCCC-Attendance-Data/wiki/UNFCCC-Project-Code--Execution-Steps) WIKI.
 
  ## Folder Structure:
-   - **master_data**: This directory holds the definitive CSV files, both with and without translated data.
+   - **master_data**: This directory holds the final datasets as definitive CSV files, both with and without translated data.
         - Files:
            -  cops.cleaned.csv
            -  precops.cleaned.csv
            -  cops.cleaned.translated.csv
            -  precops.cleaned.translated.csv
         
-        - Translated files contains data in Spanish and French languages, translated to English.
+        - Translated files contains data that was originaly in Spanish and French that has been translated to English.
 
    - **python_files**: These scripts are designed for PDF text extraction and classification, facilitating the generation of CSV files.
         - Files:
