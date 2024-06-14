@@ -46,7 +46,7 @@ To set up the project environment, follow these steps:
             - manual text extracted and classified files :  directory, contains Manually Extracted and classifed pdf, csv files, served as Ground Truth, to calculate Accuracies for our final CSV file.
             - inputs_file.py : contains the input data dictionaries and other inputs necessary in the extraction and classification code.
             - post_processing_of_teseract_file.py : clean, and format data extracted from image csv files.
-            - spanish_french_translate_to_english.py : Translate the final CSV files, Spanish and French Text to English.      
+            - spanish_french_translate_to_english.py : Translate the final CSV files, Spanish and French text to English.      
 
    - **r_code**: This directory contains R scripts designed for functions such as data cleaning, validation, visualization, and analysis.
        - Files:
