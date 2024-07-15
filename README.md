@@ -52,7 +52,7 @@ To set up the project environment, follow these steps:
        - Files:
            - data validation files: directory, includes files for data validation using Participation statistics to compare the retained information in the final CSV files against the original PDF documents.
            - data visualization files: directory, contains code for visualizing data from the final CSV files, such as cumulative temporal plots.
-           - FinalDataCleaning_COP.R and FinalDataCleaning_PreCOP.R are scripts used for data cleaning.
+           - FinalDataCleaning_COP.R, FinalDataCleaning_PreCOP.R and FinalDatasetFormatting.R are scripts used for data cleaning.
 
      
    - **requirements.txt**: This file enumerates the Python dependencies necessary for the project.
