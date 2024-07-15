@@ -1,6 +1,4 @@
-#
-#This R-script make a keyness plot by male vs female
-#
+#This code makes a Wordcloud by Male vs Female for 2021 onward
 
 ##############
 ####Set Up####
@@ -9,7 +7,7 @@
 #clear memory
 rm(list=ls())
 
-#Load some necessary packages
+#Load some necessary packages (required during each R-session)
 library(tm)
 library(wordcloud)
 library(quanteda)
@@ -21,7 +19,7 @@ library(tidyverse)
 set.seed(50)
 
 #set working directory
-setwd(".../applications/")  
+setwd("C:/Users/bagoz/OneDrive/Desktop/COPsNew/")  
 
 
 ################################################################
@@ -31,23 +29,37 @@ setwd(".../applications/")
 #read in cleaned data
 complete.data<-read.csv("cops.cleaned.translated.csv",header=TRUE, row.names=NULL,fileEncoding = "UTF-8")
 
-#subset to only male/female respondents and to only COPs taking place in 2021 or later
+#subset
 complete.data<-subset(complete.data,!is.na(complete.data$Female))
 complete.data<-subset(complete.data,complete.data$Year>=2021)
 
-#format gender variable
+#format variables
 complete.data$gender<-ifelse(complete.data$Female==1,"Female","Male")
 
-#Apply corpus() to our object
+#Apply corpus()
 docs <- corpus(complete.data, text_field = 'Job_Title')
+docs
+summary(docs)
 
 
-##########################################################################
-#################################Keyness##################################
-##########################################################################
+############################
+####Wordcloud by Gender#####
+############################
 
-# compare job titles across genders by chi^2
-dfmat1 <- corpus_subset(docs, 
+#1. Subset corpus to only cases with non NA on Female
+#2. Convert to a DTM and remove stopwords and punctuation 
+#3. Retain only terms that appear at least 15 times in the remaining corpus
+dfm_gw <- corpus_subset(docs, !is.na(Female)) %>% 
+    dfm(remove = stopwords('english'), remove_punct = TRUE) %>%
+    dfm_trim(min_termfreq = 15, verbose = FALSE)
+
+#####################################################
+####Comparison Wordcloud For Multiple Genders#####
+#####################################################
+
+#Make Wordcloud
+png("comparison.png", units="in", width=5, height=5, res=300)
+corpus_subset(docs, 
               gender %in% c("Male", "Female")) %>%
     tokens(remove_punct = TRUE) %>%
     tokens_remove(stopwords("english")) %>%
@@ -55,10 +67,8 @@ dfmat1 <- corpus_subset(docs,
     tokens_remove(stopwords("french")) %>%
     dfm() %>%
     dfm_group(groups = gender) %>%
-    dfm_trim(min_termfreq = 5, verbose = FALSE)
-tstat1 <- textstat_keyness(dfmat1, target = "Female")
+    dfm_trim(min_termfreq = 5, verbose = FALSE) %>%
+    textplot_wordcloud(comparison = TRUE,color = c("orange","forestgreen"))
+dev.off()
 
-#make plot
-textplot_keyness(tstat1, margin = 0.2, n = 10)
-
-#The End
+#The end
