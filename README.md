@@ -48,10 +48,9 @@ To set up the project environment, follow these steps:
             - post_processing_of_teseract_file.py : clean, and format data extracted from image csv files.
             - spanish_french_translate_to_english.py : Translate the final CSV files, Spanish and French text to English.      
 
-   - **r_code**: This directory contains R scripts designed for functions such as data cleaning, validation, visualization, and analysis.
+   - **r_code**: This directory contains R scripts designed for functions such as data cleaning and validation.
        - Files:
            - data validation files: directory, includes files for data validation using Participation statistics to compare the retained information in the final CSV files against the original PDF documents.
-           - data visualization files: directory, contains code for visualizing data from the final CSV files, such as cumulative temporal plots.
            - FinalDataCleaning_COP.R, FinalDataCleaning_PreCOP.R and FinalDatasetFormatting.R are scripts used for data cleaning.
 
      
