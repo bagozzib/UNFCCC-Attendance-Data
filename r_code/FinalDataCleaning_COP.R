@@ -25,7 +25,7 @@ library(reshape2)
 set.seed(50)
 
 #set working directory
-setwd("C:/Users/bagozzib/Desktop/Completed Excel Files/New files/Cops")
+setwd("")
 
 
 #######################################
@@ -55,7 +55,7 @@ properties<-unlist(strsplit(currentfile,"_",fixed=T))
 #########step 1: standardize retained columns#########
 ######################################################
 
-if(properties[3]!=28){
+if((as.numeric(properties[3])!=28) & (as.numeric(properties[3])!=29)){
 
 #omit English-translated columns and other unnecessary columns 
 #These vary from COP to COP, and code below is meant to be robust to this varition
@@ -72,6 +72,9 @@ cop.example<-as.data.frame(cop.example)
 #add virtual indicator
 cop.example$Virtual<-0
 
+#add overflow indicator
+cop.example$Overflow<-0
+
 #add COP and year variables
 cop.example$Year<-properties[1]
 cop.example$Meeting<-paste(properties[2],properties[3],sep=" ")
@@ -88,12 +91,16 @@ cop.example$Location<-location
 
 }
 
+
 else{
-#rename COP 28 columns
-colnames(cop.example)<-c("Group","Entity","Title","Name","Job Title","Division","Affiliation","Virtual")
+#rename COP 28 & 29 columns
+colnames(cop.example)<-c("Group","Entity","Title","Name","Job Title","Division","Affiliation","Virtual","Overflow")
 
 #remove spaces from column names, which R does not always like
 colnames(cop.example)<-gsub(" ","",colnames(cop.example))
+
+#omit blank rows
+cop.example<-subset(cop.example,!is.na(cop.example$Group))
 
 #add COP and year variables
 cop.example$Year<-properties[1]
@@ -107,9 +114,6 @@ location<-gsub("_new","",location)
 location<-gsub("Part 1","",location)
 location<-gsub("Part 2","",location)
 cop.example$Location<-location
-
-
-
 
 }
 
@@ -816,7 +820,7 @@ cop.full<-rbind(cop.full,cop.example)
 }#close full loop
 
 #add column names
-colnames(cop.full)<-c("Group_Type","Delegation","Honorific","Person_Name","Job_Title","Division","Affiliation","Virtual","Year","Meeting","Location",    "Female","IGO","NGO","Observer","Party","IO" )
+colnames(cop.full)<-c("Group_Type","Delegation","Honorific","Person_Name","Job_Title","Division","Affiliation","Virtual","Overflow","Year","Meeting","Location",    "Female","IGO","NGO","Observer","Party","IO" )
 
 #fix location mentions
 cop.full$Location<-gsub("\\(","",cop.full$Location)
@@ -827,7 +831,7 @@ cop.full$Location<-str_squish(cop.full$Location)
 cop.full$Location<-trimws(cop.full$Location, which = "both")
 
 #set working directory
-setwd("C:/Users/bagozzib/Desktop/Completed Excel Files/")
+setwd("")
 
 #now save file
 write.csv(cop.full,"cops.cleaned.csv",row.names=FALSE)
