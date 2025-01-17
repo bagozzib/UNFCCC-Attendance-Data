@@ -34,8 +34,17 @@ cops.data<-read.csv("cops.cleaned.csv",header=TRUE, row.names=NULL,encoding="ISO
 precops.data<-read.csv("precops.cleaned.csv",header=TRUE, row.names=NULL,encoding="ISO-8859-13") 
 
 #read in intermediate translated data
-cops.data.translated<-read.csv("cops.cleaned.translated.csv",header=TRUE, row.names=NULL,encoding="latin1") 
+cops.data.translated<-read.csv("cops.cleaned.translated.csv",header=TRUE, row.names=NULL,encoding="ISO-8859-13") 
 precops.data.translated<-read.csv("precops.cleaned.translated.csv",header=TRUE, row.names=NULL,encoding="latin1") 
+
+#add extra variable to precops
+precops.data$Overflow<-0
+precops.data.translated$Overflow<-0
+
+#reorder
+precops.data <- precops.data[, c("Group_Type","Delegation","Honorific","Person_Name","Job_Title","Division","Affiliation","Virtual","Overflow","Year","Meeting","Location","Female","IGO",         "NGO","Observer","Party", "IO" )]
+
+precops.data.translated <- precops.data.translated[, c("Group_Type","Delegation","Honorific","Person_Name","Job_Title","Division","Affiliation","Virtual","Overflow","Year","Meeting","Location","Female","IGO",         "NGO","Observer","Party", "IO" )]
 
 ##################################################################
 #######################Final Cleaning#############################
@@ -1700,11 +1709,7 @@ precops.data.translated$Delegation_ISO<-ifelse(precops.data.translated$Delegatio
 precops.data.translated$Delegation_ISO<-ifelse(precops.data.translated$Delegation=="Zambia","ZMB",precops.data.translated$Delegation_ISO)
 precops.data.translated$Delegation_ISO<-ifelse(precops.data.translated$Delegation=="Zimbabwe","ZWE",precops.data.translated$Delegation_ISO)
 
-#remove extra columns from translated versions
-cops.data.translated<-cops.data.translated[ , -which(names(cops.data.translated) %in% c("X","X.1"))]
-precops.data.translated<-precops.data.translated[ , -which(names(precops.data.translated) %in% c("X","X.1"))]
-
-#remove extra row in precops.data.translated
+#address extra row
 precops.data.translated<-precops.data.translated[1:7830,]
 
 #######################################################################
