@@ -407,8 +407,17 @@ cop.example$Group<-ifelse(cop.example$Group=="Representatives of United Nations 
 cop.example$Group<-ifelse(cop.example$Group=="UN Secretariat units and Bodies","United Nations Secretariat units and bodies",cop.example$Group)
 cop.example$Group<-ifelse(cop.example$Group=="Representatives of United Nations secretariat units and bodies","United Nations Secretariat units and bodies",cop.example$Group)
 cop.example$Group<-ifelse(cop.example$Group=="United Nations secretariat units and bodies","United Nations Secretariat units and bodies",cop.example$Group)                  
-cop.example$Group<-ifelse(cop.example$Group=="United Nations secretariat units and related bodies","United Nations Secretariat units and bodies" ,cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="United Nations secretariat units and related bodies","United Nations Secretariat units and bodies",cop.example$Group)
+cop.example$Group<-ifelse(cop.example$Group=="Spec. agencies&rel.orgs","Specialized agencies and related organizations",cop.example$Group) 
 cop.example$Group<-ifelse(cop.example$Group=="United Nations specialized agencies and related organizations","United Nations Secretariat units and bodies",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="Intergovernmental orgs.","Intergovernmental organizations",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="Non-governmental orgs.","Non-governmental organizations",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="Party","Parties",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="Spec. agencies&rel.orgs","Specialized agencies and related organizations",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="UN secretariat units & bodies","United Nations Secretariat units and bodies",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="UN Secretariat units & bodies","United Nations Secretariat units and bodies",cop.example$Group) 
+cop.example$Group<-ifelse(cop.example$Group=="Spec. agencies & related orgs.","Specialized agencies and related organizations",cop.example$Group)  
+cop.example$Group<-ifelse(cop.example$Group=="Spec. agencies and related orgs","Specialized agencies and related organizations",cop.example$Group) 
 
 #create binary vars
 cop.example$IGO<-0
