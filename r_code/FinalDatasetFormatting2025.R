@@ -33,7 +33,7 @@ precops.data<-read.csv("precops.cleaned.old.csv",header=TRUE, row.names=NULL,enc
 
 #read in intermediate translated data
 cops.data.translated<-read.csv("cops.cleaned_translated with 2025 data.csv",header=TRUE, row.names=NULL,encoding="ISO-8859-13") 
-precops.data.translated<-read.csv("precops.cleaned.translated.old.csv",header=TRUE, row.names=NULL,encoding="latin1") 
+precops.data.translated<-read.csv("precops.cleaned.translated.old.csv",header=TRUE, row.names=NULL,encoding="ISO-8859-13") 
 
 #add extra variable to precops
 #precops.data$Overflow<-0
